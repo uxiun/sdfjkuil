@@ -19,15 +19,15 @@ jobs:
           node-version: 14.x
 
       - name: Install NPM packages
-        run: npm ci
+        run: pnpm install
 
       - name: Build Next.js app
-        run: npm run build
+        run: pnpm run build
         env:
           URL_PREFIX: sdfjkuil
 
       - name: Export Next.js app
-        run: npm run export
+        run: pnpm run export
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

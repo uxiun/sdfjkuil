@@ -181,8 +181,8 @@ function readgyo(gyo: string, gyosu: number) {
 }
 function parse(moji: string) {
     let gyos = moji.split("\n")
-    let lines = gyos.length==0 ? br : gyos.length
     let words = (moji.match(/\S+/g) || []).length
+    let lines = gyos.length==0 ? (words != 0 ? 1 : 0) : gyos.length
     let char = (moji.match(/\S/g) || []).length
     let almost_delemeter = (moji.match(/\S +/g) || []).length
     let char_num = almost_delemeter == words ? char+almost_delemeter-1 : char+almost_delemeter

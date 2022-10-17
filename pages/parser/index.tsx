@@ -203,7 +203,7 @@ const Out: VFC = ({res}) => {
     return (
         <div className="output">
             <div className="short">
-                {res.res.map(gyo => <div className="gyo">{gyo}</div>)}
+                {res.res.map((gyo, i) => <div className="gyo" key={`gyo${i}`}>{gyo}</div>)}
             </div>
             <div className="detail">
                 detail
@@ -213,7 +213,7 @@ const Out: VFC = ({res}) => {
                 ? Object.entries(res.info).map( kv => {
                     const [key, value] = kv
                     return (
-                        <div className="child">
+                        <div className="child" key={key}>
                             {Keyname_jpn[key]}: {value}
                         </div>
                     )

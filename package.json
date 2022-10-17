@@ -7,7 +7,7 @@
     "build": "next build",
     "export": "next export",
     "start": "next start -p 8080",
-    "lint": "next lint"
+    "lint": "next lint --dir src"
   },
   "dependencies": {
     "next": "12.3.1",

@@ -181,15 +181,18 @@ function readgyo(gyo: string, gyosu: number) {
 }
 function parse(moji: string) {
     let gyos = moji.split("\n")
-    let br = (moji.match(/\S/) || []).length
     let lines = gyos.length==0 ? br : gyos.length
+    let words = (moji.match(/\S+/g) || []).length
+    let char = (moji.match(/\S/g) || []).length
+    let almost_delemeter = (moji.match(/\S +/g) || []).length
+    let char_num = almost_delemeter == words ? char+almost_delemeter-1 : char+almost_delemeter
 
     return {
         res: gyos.map((gyo,i) => readgyo(gyo, i)),
         info: {
-            mojisu: moji.length,
+            mojisu: char_num,
             linebreak: lines,
-            word: (moji.match(/\S+/g) || []).length,
+            word: words,
         }
     }
 }

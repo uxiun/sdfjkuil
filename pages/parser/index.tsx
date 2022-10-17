@@ -1,4 +1,5 @@
 import type { VFC } from "react"
+import React from "react"
 import { useState, useRef } from "react"
 
 const sdfjkl_set = {
@@ -126,26 +127,27 @@ type Slot = {
     grammar: [string]
     skip: [number]
 }
-function read_root(word) {
+function read_root(word: string) {
     const match = word.match(/^[wersdfzxcuiojklm,\.]+$/)
     return match
 }
-function read_kino(word) {
+function read_kino(word: string) {
     const match = word.match(/^[wersdfzxcuiojklm,\.a;]+$/)
     return match
 }
-function is_affixes(word) {
+function is_affixes(word: string) {
     return false
 }
 
-function readgyo(gyo, gyosu) {
+function readgyo(gyo: string, gyosu: number) {
     const delemeter = " "
     const words = gyo.match(/\S+/g)
     if (words) {
         let wordres_list: string[] = []
         let formative_started = false
         let pre_hinsi: Hinsi = "root"
-        for (const [i,word] of words.entries()) {
+        for (const i in words) {
+            const word = words[i]
             if (word == undefined) {
                 continue;
             }
@@ -177,10 +179,10 @@ function readgyo(gyo, gyosu) {
         return gyo
     }
 }
-function parse(moji) {
+function parse(moji: string) {
     let gyos = moji.split("\n")
-    let br = (moji.match(/\n\S/g) || []).length
-    let lines = br==0 ? 0 : br+1
+    let br = (moji.match(/\S/) || []).length
+    let lines = gyos.length==0 ? br : gyos.length
 
     return {
         res: gyos.map((gyo,i) => readgyo(gyo, i)),
@@ -192,13 +194,34 @@ function parse(moji) {
     }
 }
 
-const Keyname_jpn = {
-    mojisu: "字数",
-    linebreak: "行数",
-    word: "語数",
+const Keyname_jpn = (key: string) => {
+    switch (key) {
+        case "mojisu":
+            return "字数"
+            break;
+        case "linebreak":
+            return "行数"
+            break;
+        case "word":
+            return "語数"
+            break
+        default:
+            return "??"
+    }
 }
 
-const Out: VFC = ({res}) => {
+type Res = {
+    res: string[],
+    info: {
+        mojisu: number,
+        linebreak: number,
+        word: number,
+    }
+}
+type OutProps = {
+    res: Res
+}
+const Out: VFC<OutProps> = ({res}: OutProps) => {
 
     return (
         <div className="output">
@@ -210,14 +233,16 @@ const Out: VFC = ({res}) => {
             </div>
             <div className="info">
                 {res.info
-                ? Object.entries(res.info).map( kv => {
-                    const [key, value] = kv
-                    return (
-                        <div className="child" key={key}>
-                            {Keyname_jpn[key]}: {value}
-                        </div>
-                    )
-                }  )
+                ? <>
+                    {Object.entries(res.info).map( kv => {
+                        const [key, value] = kv
+                        return (
+                            <div className="child" key={key}>
+                                {Keyname_jpn(key)}: {value}
+                            </div>
+                        )
+                    })}
+                </>
                 : ""}
             </div>
         </div>
@@ -225,12 +250,17 @@ const Out: VFC = ({res}) => {
 }
 const InAndOut: VFC = () => {
     const [moji, setMoji] = useState("")
-    const [res, setRes] = useState({
-        res: []
+    const [res, setRes] = useState<Res>({
+        res: [],
+        info: {
+            mojisu: 0,
+            linebreak: 0,
+            word: 0
+        }
     })
     // const [tksa, setTksa] = useState(0)
     // const mojiRef = useRef(null)
-    const mojimwbm = (e) => {
+    const mojimwbm = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const m = e.target.value
         setMoji(m)
         const r = parse(m)

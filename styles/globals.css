@@ -28,3 +28,6 @@ a {
 .center-sayu {
     margin: 0 10vw;
 }
+textarea {
+    font-size: 1rem !important;
+}

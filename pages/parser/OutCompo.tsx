@@ -43,7 +43,7 @@ const Out: React.VFC<OutProps> = (props: OutProps) => {
                                 {
                                     gyoxes.map(([gloss, glosstag, tagclass])=> {
                                         const cl = `${glosstag} ${glosstag}${tagclass}`
-                                        return <span className={cl} >{gloss}</span>
+                                        return <span className={cl} key={gloss}>{gloss}</span>
                                     })
                                 }
                             </div>

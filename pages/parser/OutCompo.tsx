@@ -6,7 +6,7 @@ import {
     ,OutProps
     ,keyinfo_list
     ,Keyname_jpn
-} from "./Out"
+} from "../../lib/Out"
 
 const Out: React.VFC<OutProps> = ({ res }: OutProps) => {
     keyinfo_list.forEach((keyinfo, i) => {

@@ -1,4 +1,4 @@
-import {gloss} from "../parser/Pattern"
+import {gloss} from "./Pattern"
 
 export const keyinfo_list: KeyInfo[] = [
     {

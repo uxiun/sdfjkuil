@@ -3,17 +3,19 @@
 
 import {
     grammar_nantaku, GrammarName, OutProps,
-    code_key_map, char_code_map, GrammarTaku, Delemeter,
+    code_key_map, char_code_map, GrammarTaku, Delemeter, Glosstsx
 } from "./Out"
 
 
 const grammar_sets_name = {
     scope_mood: "scope_mood"
+    ,nines: "nines"
 } as const
 type GrammarSetName = typeof grammar_sets_name[keyof typeof grammar_sets_name]
 type GrammarSet = GrammarName[]
 const grammar_sets: Map<GrammarSetName, GrammarSet> = new Map([
-    ["scope_mood", ["casescope", "mood"]],
+    ["scope_mood", ["casescope", "mood"]]
+    ,["nines", ["valence", "phase", "effect", "level"]]
 ])
 
 const GrammarValues: Map<GrammarName, string[]> = new Map()
@@ -29,13 +31,7 @@ type Slot = {
 const slots: Slot[] = [
     {
         grams: [
-            "concatenation",
-            ["scope_mood", false],
-        ]
-
-    }, {
-        grams: [
-            "version" //GramId 0
+            "version" //2
             , [
                 [//e,s
                     ["configuration", 0]
@@ -45,14 +41,52 @@ const slots: Slot[] = [
                 ],
             ]//GramId 1
         ]
-    }, {
+    },
+    {
         grams: [
-            "function",
-            "specification",
+            "concatenation",//3
+            ["scope_mood", false],//6
         ]
-    }, {
+
+    },
+    {
         grams: [
-            ["scope_mood", true]
+            "function",//2
+            "specification",//4
+        ]
+    }
+    ,{
+        grams: [
+            "configuration"
+        ]
+    },
+    {
+        grams: [
+            "extension"
+            ,"affiliation"
+        ]
+    },
+    {
+        grams: [
+            "perspective"
+            ,"essence"
+        ]
+    },
+    {
+        grams: [
+            ["nines", false]
+            ,["nines", true]
+        ]
+    },
+    {
+        grams: [
+            "context"
+            ,["scope_mood", true]//2
+        ]
+    },
+    {
+        grams: [
+            "illovali"
         ]
     }
 ]
@@ -103,7 +137,7 @@ const hanten = (d: number) => d < 10 ? d + 10 : d - 10
 const taku_haiti_map: Map<number, Haiti> = new Map()
 const sivoris_size_map: Map<number, number> = new Map()
 const amr_range_map: Map<number, number[]> = new Map()
-const nokos_order = [
+const nokos_order = [//length 8
     [0, 1, 2, 3, 5, 6, 7, 8]
     , [0, 1, 2, 3, 4, 5, 7,]
     , [0, 1, 2, 3, 4, 5,]
@@ -172,24 +206,32 @@ function su_type_analyze(
         if (typeof gram === "string") {//GrammarName
             const name = gram as GrammarName
             const value_su = grammar_nantaku[name as keyof GrammarTaku]
+            console.log(`grammar name detected. ${gram}: ${value_su}`)
             su_type_s.push([value_su, 0, i])
             su_type_m.set(i, [value_su, 0])
-        } else if (typeof gram[0] === 'string') { //GrammarSetValue
+        } else if (typeof gram[1] === 'boolean') { //GrammarSetValue
             const gram_set_value = gram as GrammarSetValue
             const gram_set = grammar_sets.get(gram_set_value[0])
             let value_su = -1
             if (gram_set !== undefined) {
+                let value_count = 0
                 value_su = gram_set
-                    .map(d => grammar_nantaku[d as keyof GrammarTaku]
-                    )
+                    .map(d => {
+                       const taku = grammar_nantaku[d as keyof GrammarTaku]
+                        value_count = taku
+                        return taku
+                    })
                     .reduce((d, f) =>
                         (d === 0 || d === f) ? f : -1, 0
                     )
                 if (value_su < 0) {
                     console.log("択数が一定でないgrammar setは不正")
 
+                } else {
+                    value_su = gram_set_value[1]
+                    ? gram_set.length
+                    : value_count
                 }
-                value_su = gram_set.length
             }
             su_type_s.push([value_su, 1, i])
             su_type_m.set(i, [value_su, 1])
@@ -256,10 +298,12 @@ function process(slot: Slot) {
         } else if (taku > shift_num) {//11-18
             const amr = taku - 9
             const i = nokos_order.length - amr
-            const range = (d: number) => d < 9 || (
+            const range = taku < 18
+            ? (d: number) => d < 9 || (
                 i >= 0
                 && nokos_order[i].includes(d % shift_num)
             )
+            : (d:number)=> d%shift_num < 9
             const haiti: Haiti = {
                 katate: false
                 , range
@@ -311,16 +355,14 @@ function process(slot: Slot) {
                 const amr = (key_size - taku * buddy[0]) / 2
                 const katate = false
                 const range = (d: number) => get_range(amr).includes(d % shift_num)
-                let classer: VoidBool = [(d: number) => d % shift_num, true]
-                let buddy_classer: VoidBool = [(d: number) => d, true]
+                let classer: VoidBool = [(d: number) => d % shift_num, false]
+                let buddy_classer: VoidBool = [(d: number) => d, false]
                 if (buddy[0] === 3) {
-                    classer = [d => d % taku, true]
-                    buddy_classer = [d => d % buddy[0], true]
+                    // classer = [d => d % taku, true]
+                    buddy_classer = [d => ~~(d % shift_num / 3), true]
                 } else if (buddy[0] === 2) {
                     buddy_classer = [d => d < 10 ? 0 : 1, true]
                 }
-
-
 
                 gram_used_map.set(buddy[2], true)
 
@@ -885,46 +927,87 @@ export function gloss(word: string) {
 
     const [setu_zi_s, setu_grams_m, gram_sets_status]: ReadKinoReturn = read_kino(word)
     let setus_str = ``
+    let setus_list: Glosstsx[] = []
     setu_zi_s.forEach((zi_s, setu_i)=>{
         const grams = setu_grams_m.get(setu_i)
         let zis_str = ``
+        let zis_str_list: Glosstsx[] = []
+
         if (grams!==undefined){
             grams.sort((d, f)=> d[2] - f[2])
             zi_s.forEach((zi, zi_i)=>{
                 const tar_grams = grams.filter(d=> d[2]=== zi_i)
                 let gramvalues = ``
+                let gramvalues_list: Glosstsx[] = []
                 for (const tar_gram of tar_grams){
                     const [setu_map_name, value_number, zi_ii]: SetuMapValue = tar_gram
                     const [is_set_name, name] = setu_map_name
                     let grammarstr = ``
+                    let grammarstr_list: Glosstsx[] = []
                     if (options.or_value_to_name){
                         grammarstr = value_to_name([setu_map_name, value_number], value_number)
                     } else {
                         if (is_set_name){
                             const gram_set = grammar_sets.get(name as GrammarSetName)
                             let str =``
+                            let str_list: Glosstsx[] = []
                             if (gram_set!==undefined){
                                 const status = gram_sets_status.get(name as GrammarSetName)
                                 if (status!==undefined){
                                     gram_set.forEach((name, i)=>{
                                         const mark = i===status.which? `*`: ""
                                         str += `, ${mark}${name}`
+                                        str_list = [
+                                            ...str_list
+                                            ,[mark, "other", 0]
+                                            ,[name, "attr", 0]
+                                            ,[", ", "delem", 0]
+                                        ]
                                     })
-
+                                    str_list.pop()
                                 }
                             }
-                            grammarstr = `[${str.substring(2)}]`
+                            str = str.substring(2)
+                            grammarstr = `[${str}]`
+                            grammarstr_list = [
+                                ["[", "kakko", 0]
+                                , ...str_list
+                                ,["]", "kakko", 0]
+                            ]
                         } else {
                             grammarstr = `${name}${value_number}`
+                            grammarstr_list = [
+                                [name, "attr", 0]
+                                ,[`${value_number}`, "value", 0]
+                            ]
                         }
                     }
 
                     gramvalues+= Delemeter.zi +grammarstr
+                    gramvalues_list = [
+                        ...gramvalues_list
+                        ,[Delemeter.zi, "delem", 0]
+                        ,...grammarstr_list
+                    ]
                 }
                 const zi_del = options.hide_each_zi? '': zi +Delemeter.zi_grammar
+                const zi_delist: Glosstsx[] = options.hide_each_zi
+                ? []
+                : [
+                    [zi, "spell", 0]
+                    ,[Delemeter.zi_grammar, "delem", 0]
+                ]
                 zis_str+= zi_del +gramvalues.substring(Delemeter.zi.length) +Delemeter.keitaiso
+                gramvalues_list.shift()
+                zis_str_list = [
+                    ...zis_str_list
+                    ,...zi_delist
+                    ,...gramvalues_list
+                    ,[Delemeter.keitaiso, "delem", 0]
+                ]
             })
             zis_str= zis_str.substring(0, zis_str.length-1)
+            zis_str_list.pop()
             //invalid string if exists, below code's res may missing that string
             // for (const [name, value_number, zi_i] of grams ){
             //     const grammarstr = options.or_value_to_name? value_to_name(name, value_number) : `${name}${value_number}`
@@ -932,10 +1015,18 @@ export function gloss(word: string) {
             // }
         }
         setus_str+= zis_str +Delemeter.keitaiso_grammars
+        setus_list = [
+            ...setus_list
+            ,...zis_str_list
+            ,[Delemeter.keitaiso_grammars, "delem", 0]
+        ]
     })
-    return setus_str
+    setus_str = setus_str.substring(0, setus_str.length - Delemeter.keitaiso_grammars.length)
+    setus_list.pop()
+    const re: StrTsx = [setus_str, setus_list]
+    return re
 }
-
+export type StrTsx = [string, Glosstsx[]]
 type GlossSchema = Map<string, GrammarAssign[]>[]
 
 

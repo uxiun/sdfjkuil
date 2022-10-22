@@ -15,7 +15,7 @@ a {
   box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
   }
@@ -23,11 +23,33 @@ a {
     color: white;
     background: black;
   }
-}
+} */
 
 .center-sayu {
     margin: 0 10vw;
 }
 textarea {
     font-size: 1rem !important;
+}
+
+
+/*color format*/
+.gyo {
+    --value: rgb(39, 159, 9);
+    --attr: rgb(38, 67, 130);
+    --spell: brown;
+    --delem: rgb(255, 0, 43);
+    --other: black;
+}
+span.spell {
+    color: var(--spell)
+}
+span.value {
+    color: var(--value)
+}
+span.attr {
+    color: var(--attr)
+}
+span.delem {
+    color: var(--delem)
 }

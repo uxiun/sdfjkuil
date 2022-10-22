@@ -1,4 +1,4 @@
-import {gloss} from "./Pattern"
+import {gloss, StrTsx} from "./Pattern"
 
 export const keyinfo_list: KeyInfo[] = [
     {
@@ -212,9 +212,10 @@ export type GrammarTaku = {
     aspect: number,
     illocution: number,
     validation: number,
-    expectation: number,
+    // expectation: number,
+    illovali: number,
     case: number,
-    orcase: number,
+    //orcase: number,
 }
 export const grammar_nantaku: GrammarTaku = {
     concatenation: 3,
@@ -237,9 +238,10 @@ export const grammar_nantaku: GrammarTaku = {
     aspect: 36,
     illocution: 2,
     validation: 8,
-    expectation: 3,
+    //expectation: 3,
+    illovali: 17,
     case: 68,
-    orcase: 2,
+    //orcase: 2,
 }
 const grammar_names = {
     con: "concatenation",
@@ -262,9 +264,10 @@ const grammar_names = {
     asp: "aspect",
     ill: "illocution",
     vali: "validation",
-    exp: "expectation",
+    // exp: "expectation",
+    ilvl: "illovali",
     case: "case",
-    or: "orcase",
+    // or: "orcase",
     skip: "skip",
 } as const
 export type GrammarName = typeof grammar_names[keyof typeof grammar_names]
@@ -725,11 +728,26 @@ function is_affixes(word: string) {
     return false
 }
 
+const glosstag = {
+    other: "other"
+    ,attr: "attr"
+    ,delem: "delem"
+    ,value: "value"
+    ,kakko: "kakko"
+    ,spell: "spell"
+} as const
+type Gloss = string
+type GlossTag = typeof glosstag[keyof typeof glosstag]
+type GlossTagClass = number
+export type Glosstsx = [Gloss, GlossTag, GlossTagClass]
+
 function readgyo(gyo: string, gyosu: number) {
+    const fn_r: StrTsx = ["", []]
     const delemeter = Delemeter.word
     const words = gyo.match(/\S+/g)
     if (words) {
         let wordres_list: string[] = []
+        let htmlist: Glosstsx[][] = []
         let formative_started = false
         let pre_hinsi: Hinsi = "root"
         for (const i in words) {
@@ -741,13 +759,19 @@ function readgyo(gyo: string, gyosu: number) {
                 if (is_affixes(word)) {
                     pre_hinsi = "affixes"
                 } else {
-                    const r = gloss(word)
+                    const [rstr, rlist] = gloss(word)
                     // const r = read_kino(word)
-                    if (r) {
-                        wordres_list.push(`${r} :kino`)
+                    if (rstr) {
+                        wordres_list.push(`${rstr} :kino`)
+                        htmlist.push( [
+
+                            ...rlist
+                            , [" :", "delem", 0]
+                            , ["kino", "attr", 1]
+                        ])
                         pre_hinsi = "kino"
                     } else {
-                        return `line[${gyosu}] word[${i}] invalid kino: '${word}'`
+                        return [`line[${gyosu}] word[${i}] invalid kino: '${word}'`, []] as StrTsx
                     }
                     formative_started = false
                 }
@@ -756,19 +780,44 @@ function readgyo(gyo: string, gyosu: number) {
                 const r = read_root(word)
                 if (r) {
                     wordres_list.push(`${word} :root`)
+                    htmlist.push( [
+                        [word, "spell", 0]
+                        ,[" :", "delem", 0]
+                        ,["root", "attr", 1]
+                    ])
                     pre_hinsi = "root"
                 } else {
-                    return `line[${gyosu}] word[${i}] invalid root: '${word}'`
+                    return [`line[${gyosu}] word[${i}] invalid root: '${word}'`, []] as StrTsx
                 }
             }
         }
         let w = wordres_list.reduce((d, f) => d + delemeter + f, "")
-        if (pre_hinsi != "kino") { w += "..." }
-        return w.substring(delemeter.length)
+        let wlist: Glosstsx[] = []
+        htmlist.forEach(e => {
+            wlist = [
+                ...wlist
+                , [delemeter, "delem", 0]
+                , ...e
+            ]
+        })
+        if (pre_hinsi != "kino") {
+             w += "..."
+             wlist.push(["...", "other", 0])
+        }
+        wlist.shift()
+        w = w.substring(delemeter.length)
+        return [w, wlist] as StrTsx
     } else {
-        return gyo
+        return [gyo, []] as StrTsx
     }
 }
+
+// function strtsx_converter([str, glosstsx]: StrTsx) {
+//     const tenkai = glosstsx.map(([gloss, glosstag, tagclass])=>
+//         <span className=`${glosstag} ${glosstag}${tagclass}`>{gloss}</span>
+//     )
+// }
+
 export function parse(moji: string) {
     let gyos = moji.split("\n")
     let words = (moji.match(/\S+/g) || []).length
@@ -777,6 +826,7 @@ export function parse(moji: string) {
     let almost_delemeter = (moji.match(/\S +/g) || []).length
     let char_num = almost_delemeter == words ? char + almost_delemeter - 1 : char + almost_delemeter
 
+    // const [rstr, xlist] = gyos.map((gyo, i) => readgyo(gyo, i))
     return {
         res: gyos.map((gyo, i) => readgyo(gyo, i)),
         info: {
@@ -802,14 +852,14 @@ export const Keyname_jpn = (key: string) => {
             return "??"
     }
 }
-
+export type SizeInfo = {
+    mojisu: number,
+    word: number,
+    linebreak: number,
+}
 export type Res = {
-    res: string[],
-    info: {
-        mojisu: number,
-        linebreak: number,
-        word: number,
-    }
+    res: StrTsx[],
+    info: SizeInfo
 }
 
 export type OutProps = {

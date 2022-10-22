@@ -2,31 +2,54 @@ import React from "react"
 
 import {
     code_key_map
-    ,char_code_map
-    ,OutProps
-    ,keyinfo_list
-    ,Keyname_jpn
+    , char_code_map
+    , OutProps
+    , keyinfo_list
+    , Keyname_jpn
+    , SizeInfo
 } from "../../lib/Out"
 
 const Out: React.VFC<OutProps> = (props: OutProps) => {
     const res = props.res === undefined
-    ? {
-        res: [],
-        info: {
-            mojisu: 0,
-            linebreak: 0,
-            word: 0,
+        ? {
+            res: [],
+            info: {
+                mojisu: 0,
+                word: 0,
+                linebreak: 0,
+            }
         }
-    }
-    : props.res
+        : props.res
     keyinfo_list.forEach((keyinfo, i) => {
         code_key_map.set(i, keyinfo)
         char_code_map.set(keyinfo.char, i)
     })
+    const text_size_infos = [
+        "mojisu"
+        , "word"
+        , "linebreak"
+    ]
     return (
         <div className="output">
             <div className="short">
-                {res.res.map((gyo, i) => <div className="gyo" key={`gyo${i}`}>{gyo}</div>)}
+                {
+                    res.res.map(([gyo, gyoxes], i) =>
+                        <div key={`gyo${i}`}>
+                            {/* <div className="gyo">{gyo}</div> */}
+                            <div
+                                className="gyo styled"
+                                key={`styled_gyo${i}`}
+                            >
+                                {
+                                    gyoxes.map(([gloss, glosstag, tagclass])=> {
+                                        const cl = `${glosstag} ${glosstag}${tagclass}`
+                                        return <span className={cl} >{gloss}</span>
+                                    })
+                                }
+                            </div>
+                        </div>
+                    )
+                }
             </div>
             <div className="detail">
                 detail
@@ -34,18 +57,20 @@ const Out: React.VFC<OutProps> = (props: OutProps) => {
             <div className="info">
                 {res.info
                     ? <>
-                        {Object.entries(res.info).map(kv => {
-                            const [key, value] = kv
-                            return (
-                                <div className="child" key={key}>
-                                    {Keyname_jpn(key)}: {value}
-                                </div>
-                            )
-                        })}
+                        {
+                            text_size_infos.map(info_name => {
+                                const value = res.info[info_name as keyof SizeInfo]
+                                return (
+                                    <div className="child" key={info_name}>
+                                        {Keyname_jpn(info_name)}: {value}
+                                    </div>
+                                )
+                            })
+                        }
                     </>
                     : ""}
             </div>
-        </div>
+        </div >
     )
 }
 

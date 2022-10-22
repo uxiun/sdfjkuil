@@ -22,6 +22,10 @@ const InAndOut: VFC = () => {
         const r = parse(m)
         setRes(r)
     }
+
+    //tameshi start
+
+    //tameshi end
     return (
         <>
             <textarea

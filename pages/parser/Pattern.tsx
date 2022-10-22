@@ -5,7 +5,7 @@ import {
     grammar_nantaku, GrammarName, OutProps,
     code_key_map, char_code_map, GrammarTaku, Delemeter,
 } from "./Out"
-import React from "react"
+
 
 const grammar_sets_name = {
     scope_mood: "scope_mood"
@@ -939,4 +939,4 @@ export function gloss(word: string) {
 type GlossSchema = Map<string, GrammarAssign[]>[]
 
 
-export const Pattern: React.VFC<OutProps> = ({ res }: OutProps) => <div>Pattern</div>
+// export const Pattern: React.VFC<OutProps> = ({ res }: OutProps) => <div>Pattern</div>

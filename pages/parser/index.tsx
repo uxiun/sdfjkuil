@@ -1,16 +1,8 @@
 import type { VFC } from "react"
 import React from "react"
 import { useState, useRef } from "react"
-import {Out, KeyInfo, parse} from "../parser/Out"
+import {Out, Res, KeyInfo, parse} from "../parser/Out"
 
-type Res = {
-    res: string[],
-    info: {
-        mojisu: number,
-        linebreak: number,
-        word: number,
-    }
-}
 const InAndOut: VFC = () => {
     const [moji, setMoji] = useState("")
     const [res, setRes] = useState<Res>({

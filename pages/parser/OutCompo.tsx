@@ -8,7 +8,17 @@ import {
     ,Keyname_jpn
 } from "../../lib/Out"
 
-const Out: React.VFC<OutProps> = ({ res }: OutProps) => {
+const Out: React.VFC<OutProps> = (props: OutProps) => {
+    const res = props.res === undefined
+    ? {
+        res: [],
+        info: {
+            mojisu: 0,
+            linebreak: 0,
+            word: 0,
+        }
+    }
+    : props.res
     keyinfo_list.forEach((keyinfo, i) => {
         code_key_map.set(i, keyinfo)
         char_code_map.set(keyinfo.char, i)

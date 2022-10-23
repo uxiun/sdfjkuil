@@ -3,7 +3,7 @@
 
 import {
     grammar_nantaku, GrammarName, OutProps,
-    code_key_map, char_code_map, GrammarTaku, Delemeter, Glosstsx
+    code_key_map, char_code_map, GrammarTaku, Delemeter, Glosstsx, Kakko
 } from "./Out"
 
 
@@ -245,7 +245,7 @@ function su_type_analyze(
     return ret
 }
 
-function process(slot: Slot) {
+function process(slot: Slot, gram_resolved: GramResolved) {
     console.log(`\nprocess()`)
     const grams = slot.grams
     let su_type_m: Map<GramId, [TakuSize, GramType]> = new Map()
@@ -262,11 +262,20 @@ function process(slot: Slot) {
     let haitis: Haiti[] = []
     //haiti - gram, - 1zi
     let grams_mw_zi: [GramId, Haiti][][] = []
-    let masumes: Masume[] = []
+    let masumes: Masume[] = [] //下の★部からわかるとおり、gramsと長さが異なってよい
     for (const su_type of su_type_s) {
+        const [takusize, gramtype, gramid] = su_type
         console.log("su_type", su_type)
-        let used = gram_used_map.get(su_type[2])
-        if (used !== undefined && used) continue
+        let used = gram_used_map.get(gramid)
+        const continue_used = used !== undefined && used
+        let resolved = false
+        if (gramtype==0){
+            const resolvegot = gram_resolved.get(grams[gramid] as GrammarName)
+            if (resolvegot!==undefined){
+                resolved = true
+            }
+        }
+        if (continue_used || resolved) continue //★
         gram_used_map.set(su_type[2], true)
         const taku = su_type[0]
         if (taku > 20) {
@@ -559,14 +568,21 @@ type Where = [SetuId, ZiId]
 type SomethingsValue = number
 type WhichGrammar = number
 type SetuId = number
+type HandleState = {
+    inlength: boolean
+    , close: boolean
+    , valid: boolean
+}
+type StringWithStates = [string, HandleState]
+type GramResolved = Map<GrammarName, [SomethingsValue, Where]>
 
 function read_kino(kino: string) {
     type SkippedBy = Where
 
     const gram_sets_status: Map<GrammarSetName, GramSetStatus> = new Map()
-    const gram_resolved: Map<GrammarName, [SomethingsValue, Where]> = new Map()
+    const gram_resolved: GramResolved = new Map()
     let skipped_slots: Map<SlotId, SkippedBy> = new Map()
-    const setu_zi_s: string[][] = []
+    let setu_zi_s: Map<string, HandleState>[] = [] //let for closing gramset
 
     let looking_i = 1
     let pre_looking_i = 0
@@ -584,14 +600,29 @@ function read_kino(kino: string) {
             const [typem, types] = su_type_analyze(grams, su_type_m, su_type_s)
             su_type_m = typem
             const slotreader: SlotReader = []
-            grams.forEach((gram, gram_i) => slotreader.push([gram_i, 0]))
+            grams.forEach((gram, gram_i) => {
+                let topush: [GramId, number] = [gram_i, 0]
+                const got = su_type_m.get(gram_i)
+                if (got!==undefined){
+                    const sutype = got[1]
+                    if (sutype==0){
+                        const gram_name = gram as GrammarName
+                        const resolvegot = gram_resolved.get(gram_name)
+                        if (resolvegot!==undefined){
+                            const [resolved_value, where] = resolvegot
+                            topush[1] = resolved_value
+                        }
+                    }
+                }
+                slotreader.push(topush)
+            })
             const map: ReaderMap = new Map([
                 [0, slotreader]
             ])
             const ka: KatateReaderMap = [false, map]
             reader_map.push(ka)
         }else{
-            const res = process(slot)
+            const res = process(slot, gram_resolved)
             grams = res.grams
             reader_map = res.reader_map
             su_type_m = res.su_type_m
@@ -599,47 +630,69 @@ function read_kino(kino: string) {
         console.log(`slot${slot_i} was skipped <-`, has_skipped)
         console.log(`grams=`, grams)
         console.log(`reader map=`, reader_map)
-        const newsetu: string[] = []
+        let newsetu: Map<string, HandleState> = new Map()
         let dont_count_setu = false
         reader_map.forEach(([katate, zi_reader], n_zi)=>{ //inscope 1zi target
             if (dont_count_setu) return
 
             let overlength = false
             console.log(`pre_looking_i is`, pre_looking_i)
-            if (pre_looking_i > kino.length - 1) overlength = true
+            if (pre_looking_i > kino.length - 1) {
+                overlength = true
+            }
 
             const tar_str = kino.substring(pre_looking_i, looking_i)
             const tar_code = char_code_map.get(tar_str)
             console.log(`str and code: ${tar_str}, ${tar_code}`)
-            newsetu.push(tar_str)
-            const where0: Where = [setu_zi_s.length, newsetu.length - 1]
+            // newsetu.push(tar_str)
+            const where0: Where = [setu_zi_s.length,
+                newsetu.size
+            ]
             const where = has_skipped ? skipped_by : where0
 
             let slot_reader = undefined
             let is_invalid_char = false
+
+
             if (has_skipped){
+                // newsetu.set("", {
+                //         inlength: !overlength
+                //         ,valid: true
+                //         ,close: true
+                //     }
+                // )
                 for (const [_, value] of zi_reader) {
                     slot_reader = value
-                    console.log(`break`)
                     break
                 }
-                console.log(`after break`)
+                console.log(`has_skipped=true`)
             }else{
                 if (tar_code!==undefined){
                     const getter = katate? tar_code%shift_num : tar_code
                     slot_reader = zi_reader.get(getter)
                     if (slot_reader===undefined){
                         console.log(`'${tar_str}' is invalid char here`)
+                        newsetu.set(
+                            tar_str, {
+                                inlength: !overlength
+                                ,close: true
+                                ,valid: false
+                            }
+                        )
                     }
                 } else {
-                    if (!overlength && tar_str!==``){
-                        console.log(`invalid char, continue`)
-                        is_invalid_char = true
-                    }else if (overlength && tar_str===``) {
-                        console.log(`no skip and out of range, continue`)
-                        if(n_zi===0) dont_count_setu = true
+                    if (overlength && tar_str===""){
+
+                    }else{
+                        newsetu.set(
+                            tar_str, {
+                                inlength: !overlength
+                                ,close: true
+                                ,valid: false
+                            }
+                        )
                     }
-                    return
+
                 }
             }
             // if (!has_skipped && tar_code !== undefined) {
@@ -666,6 +719,7 @@ function read_kino(kino: string) {
             //     continue
             // }
             if (slot_reader !== undefined) {
+                console.log("valid true. slot_reader:", slot_reader)
                 for (const [gramid, _gramvalue] of slot_reader) {
                     const gramvalue = has_skipped ? 0 : _gramvalue
                     const about_gram = su_type_m.get(gramid)
@@ -675,6 +729,14 @@ function read_kino(kino: string) {
                             const gram_name = grams[gramid] as GrammarName
                             gram_resolved.set(gram_name, [gramvalue, where])
                             console.log(`---${gram_name}${gramvalue}`)
+                            console.log("735 valid true, str:", tar_str) //bingo
+                            newsetu.set(
+                                tar_str, {
+                                    inlength: !overlength
+                                    ,close: true
+                                    ,valid: true
+                                }
+                            )
                         } else if (gram_type === 1) {
                             const gram_set_value = grams[gramid] as GrammarSetValue
                             console.log(`---GrammarSetValue. `, gram_set_value)
@@ -689,6 +751,15 @@ function read_kino(kino: string) {
                                     , value_by: is_gram_choise? [-1,-1]: where
                                     , resolved: false
                                 })
+                                console.log("757 valid true, str:", tar_str) //bingo
+
+                                newsetu.set(
+                                    tar_str, {
+                                        inlength: !overlength
+                                        ,close: false
+                                        ,valid: true
+                                    }
+                                )
                             } else {
                                 console.log(`read kino(), status found`)
                                 // const complement = ['which', 'value'].find(d=> status[d as keyof GramSetStatus] < 0)
@@ -699,6 +770,7 @@ function read_kino(kino: string) {
                                 } else if (!status.resolved && status.value < 0) {
                                     comple2 = 'value'
                                 }
+                                let resolved = false
                                 if (is_gram_choise && comple2 === 'which') {
                                     gram_sets_status.set(setname, {
                                         ...status
@@ -706,6 +778,31 @@ function read_kino(kino: string) {
                                         , which_by: where
                                         , resolved: true
                                     })
+                                    resolved = true
+                                    console.log("gramset dicide which")
+                                    const map = setu_zi_s[status.value_by[0]]
+                                    //ある程度の長さを打つとmapがundefined
+                                    if (map===undefined){
+                                        console.log("map is undefined")
+                                        console.log("status", status)
+                                        console.log("setu zi s: ", setu_zi_s)
+                                        console.log("status.valueby", status.value_by[0])
+                                    }else{
+                                        let i = 0
+                                        let keystr = undefined
+                                        map.forEach((states, str)=>{
+                                            if (i===status.value_by[1]){
+                                                keystr = str
+                                            }
+                                            i+=1
+                                        })
+                                        if (keystr!==undefined){
+                                            const t = map.get(keystr) //
+                                            if (t!==undefined){
+                                                t.close = true
+                                            }
+                                        }
+                                    }
                                 } else if (!is_gram_choise && comple2 === 'value') {
                                     gram_sets_status.set(setname, {
                                         ...status
@@ -713,9 +810,43 @@ function read_kino(kino: string) {
                                         , value_by: where
                                         , resolved: true
                                     })
+                                    console.log("gramset dicide value")
+                                    resolved = true
+                                    const map = setu_zi_s
+                                    [status.which_by[0]]
+                                    if (map===undefined){
+                                        console.log("map is undefined")
+                                        console.log("status", status)
+                                        console.log("setu zi s: ", setu_zi_s)
+                                        console.log("status.whichby", status.which_by[0])
+                                    }else{
+                                        let i = 0
+                                        let keystr = undefined
+                                        map.forEach((states, str)=>{
+                                            if (i===status.which_by[1]){
+                                                keystr = str
+                                            }
+                                            i+=1
+                                        })
+                                        if (keystr!==undefined){
+                                            const t = map.get(keystr) //
+                                            if (t!==undefined){
+                                                t.close = true
+                                            }
+                                        }
+                                    }
                                 } else {
                                     console.log(`status cant resolved`)
                                 }
+                                console.log("804 valid true, str:", tar_str)
+                                newsetu.set(
+                                    tar_str, {
+                                        inlength: !overlength
+                                        ,close: resolved
+                                        ,valid: true
+                                    }
+                                )
+
                             }
                         } else if (gram_type === 2) {
                             const skips = grams[gramid] as Skip[]
@@ -750,6 +881,7 @@ function read_kino(kino: string) {
                                             , which_by: is_gram_choise? where: [-1,-1]
                                             , value_by: is_gram_choise? [-1,-1]: where
                                         })
+
                                     } else {
                                         let comple2 = ''
                                         if (!status.resolved && status.which < 0) {
@@ -793,10 +925,22 @@ function read_kino(kino: string) {
             }
         })
         // if (!has_skipped) setu_zi_s.push(newsetu)
-        if (!dont_count_setu) setu_zi_s.push(newsetu)
+        // if (!dont_count_setu)
+        setu_zi_s.push(newsetu)
         // has skipped: false and
 
     })
+
+    const amari_zi = kino.substring(pre_looking_i)
+    const amari_m: Map<string, HandleState> = new Map([
+        [amari_zi, {
+            inlength: false
+            ,close: true
+            ,valid: true
+        }]
+    ])
+    setu_zi_s.push(amari_m)
+
     console.log(`read kino func, gram_resolved`, gram_resolved)
     console.log(`read kino func, gram_sets_status`, gram_sets_status)//ok
     const where_m: Map<SetuId, SetuMapValue[]> = new Map()
@@ -817,10 +961,11 @@ function read_kino(kino: string) {
             , which_by
             , value_by
         } = status
-        if (resolved) {
-            const same_setus = where_m.get(value_by[0])
-            const gram_set = grammar_sets.get(gram_set_name)
-            if (gram_set!==undefined){
+        const gram_set = grammar_sets.get(gram_set_name)
+        if (gram_set!==undefined){
+            if (resolved) {
+                const same_setus = where_m.get(value_by[0])
+
 
                 const setvalue: SetuMapValue = [
                     [
@@ -837,7 +982,7 @@ function read_kino(kino: string) {
                     where_m.set(value_by[0], [...same_setus, setvalue])
                 }
 
-                const index = which_by[0]
+                const index = which_by[0] //if resolved つけないと-1になるかも
                 const same_setus1 = where_m.get(index)
                 const setvalue1: SetuMapValue = [
                     [
@@ -853,45 +998,48 @@ function read_kino(kino: string) {
                 } else {
                     where_m.set(index, [...same_setus1, setvalue1])
                 }
+
+            } else {
+                if (which < 0){
+                    const same_setus = where_m.get(value_by[0])
+                    const setvalue: SetuMapValue = [
+                        [
+                            true
+                            , gram_set_name
+                        ]
+                        , value
+                        , value_by[1]
+                    ]
+
+                    if (same_setus === undefined) {
+                        where_m.set(value_by[0], [setvalue])
+                    } else {
+                        where_m.set(value_by[0], [...same_setus, setvalue])
+                    }
+                } else if (value < 0){
+                    const index = which_by[0]
+                    const same_setus1 = where_m.get(index)
+                    const setvalue1: SetuMapValue = [
+                        [
+                            true
+                            , gram_set_name
+                        ]
+                        , which
+                        , which_by[1]
+                    ]
+
+                    if (same_setus1 === undefined) {
+                        where_m.set(index, [setvalue1])
+                    } else {
+                        where_m.set(index, [...same_setus1, setvalue1])
+                    }
+                }
             }
 
-
-            // [which_by, value_by].forEach((by, i)=> {
-            //     const same_setus = where_m.get(by[0])
-            //     const gram_set = grammar_sets.get(gram_set_name)
-            //     if (gram_set !== undefined) {
-            //         const is_set_name = i===0
-            //         if (is_set_name){
-            //             const setvalue: SetuMapValue = [
-            //                 [
-            //                     is_set_name
-            //                     , gram_set[by[0]]
-            //                 ]
-            //                 , value
-            //                 , by[1]
-            //             ]
-
-            //             if (same_setus === undefined) {
-            //                 where_m.set(by[1], [setvalue])
-            //             } else {
-            //                 where_m.set(by[0], [...same_setus, setvalue])
-            //             }
-            //         }else{
-            //             const setvalue: SetuMapValue = [
-            //                 [
-            //                     is_set_name
-            //                     , gram_set_name
-            //                 ]
-            //                 , value
-            //                 , by[1]
-            //             ]
-
-            //         }
-
-            //     }
-            // })
         }
+
     }
+
     //where_m not sorted by zi_i
     console.log('read_kino() setu zi s', setu_zi_s)
     // const setu_zi_s_trimed = setu_zi_s.filter(d=> d!==``)
@@ -903,7 +1051,7 @@ type IsSetName = boolean
 type SetuMapName = [IsSetName, GrammarName | GrammarSetName]
 type SetuMapValue = [SetuMapName, number, ZiId]
 type ReadKinoReturn = [
-    string[][]
+    Map<string, HandleState>[]
     , Map<number, SetuMapValue[]>
     , Map<GrammarSetName, GramSetStatus>
 ]
@@ -928,14 +1076,170 @@ export function gloss(word: string) {
     const [setu_zi_s, setu_grams_m, gram_sets_status]: ReadKinoReturn = read_kino(word)
     let setus_str = ``
     let setus_list: Glosstsx[] = []
-    setu_zi_s.forEach((zi_s, setu_i)=>{
+    setu_zi_s.forEach((zi_states, setu_i)=>{
         const grams = setu_grams_m.get(setu_i)
         let zis_str = ``
         let zis_str_list: Glosstsx[] = []
 
-        if (grams!==undefined){
-            grams.sort((d, f)=> d[2] - f[2])
-            zi_s.forEach((zi, zi_i)=>{
+
+        type PreCheckItem = {
+            list: string[]
+            ,pre: boolean
+        }
+        type PreChecks = {
+            inlength: PreCheckItem
+            ,valid: PreCheckItem
+            ,close: PreCheckItem
+        }
+        let pre_check: PreChecks = {
+            inlength: {
+                list: []
+                ,pre: false
+            }
+            ,valid: {
+                list: []
+                ,pre: false
+            }
+            ,close: {
+                list: []
+                ,pre: false
+            }
+        }
+        // let checkmap = new Map()
+        // const checkeds: string[] = []
+        type ZiStateMap = Map<string, HandleState>
+        const zistateM: ZiStateMap = new Map()
+
+        let prebool: HandleState = {
+            inlength: true
+            ,valid: true
+            ,close: true
+        }
+        console.log("zi_states", zi_states)
+        let same_message_zi = ""
+        let zi_i = -1
+        zi_states.forEach((states, zi)=>{
+            zi_i += 1
+            zis_str_list = [
+                ...zis_str_list
+                ,[Delemeter.keitaiso, "delem", 0]
+            ]
+            console.log("zi_states.forEach(")
+            console.log("zi", zi)
+            console.log("states", states)
+            console.log("same_message_zi", same_message_zi)
+            let kirikawaris = true
+            let nomessage = true
+            let zi_close = true
+            let show_message = false
+            let add_samessage_zi = false
+            let checked_states: string[] = []
+            Object.entries(states).forEach(([key, value])=>{
+
+                zistateM.set(zi, states)
+                const state = pre_check[key as keyof PreChecks]
+                const pre = prebool[key as keyof HandleState]
+
+                if (!value) {
+                    if (key==="inlength" || key==="valid") {
+                        add_samessage_zi = true
+                        if (
+                            (value !== pre)
+                        ||  (zi_i===zi_states.size-1 && add_samessage_zi)
+                        ) {
+                            show_message = true
+                        }
+                    }
+                } else {
+                    if (key==="inlength" || key==="valid") {
+                        if (!pre) show_message = true
+                    }
+                }
+                if (show_message) checked_states.push(key)
+                // if (!value && key==="close"){
+                //     zi_close = false
+                // }
+                // if (pre === value) {
+                //     if (!value) {
+                //         add_samessage_zi = true
+                //     }
+                // } else {
+                //     if (key==="inlength" || key==="valid") {
+                //         if (!pre || (zi_i===0 && !value)){
+                //             show_message = true
+                //             checked_states.push(key)
+                //         }
+                //     }
+                // }
+
+                // if (!value) {
+                //     const lasti = state.list.length-1
+                //     if (lasti<0 || !state.pre){
+                //         state.list.push(zi)
+                //     } else {
+                //         state.list[lasti]+=zi
+                //     }
+                //     state.pre = true
+                //     prebool[key as keyof HandleState] = true
+                //     if (key==="inlength" || key==="valid"){
+                //         kirikawaris = false
+                //         nomessage = false
+                //         checkeds.push(zi)
+                //     }
+                // } else if (state.pre || pre) {
+
+                // } else {
+                //     if (key==="inlength" || key==="valid"){
+                //         kirikawaris = false
+                //     }
+                // }
+            })
+            if (add_samessage_zi) same_message_zi+=zi
+            if (show_message){
+                console.log("show message, zi:", zi)
+                console.log("prebool:", prebool)
+                console.log("states", states)
+                console.log("zi_i", zi_i)
+                console.log("same_message_zi", same_message_zi)
+                let messages: string[] = []
+                for (const state of checked_states) {
+                    if (state==="inlength") messages.push("overlength")
+                    if (state==="valid") messages.push("invalid at least here")
+                }
+                // if (!prebool.inlength  || zi_i===0 && !states.inlength){
+                //     messages.push("overlength")
+                // }
+                // if (!prebool.valid  || zi_i===0 && !states.valid){
+                //     messages.push(`invalid at least here`)
+                // }
+                let messages_x: Glosstsx[] = []
+                for (const message of messages){
+                    messages_x = [
+                        ...messages_x
+                        , [message, "message", 0]
+                        , [", ", "delem", 0]
+                    ]
+                }
+                messages_x.pop()
+                zis_str_list = [
+                    ...zis_str_list
+                    , [Kakko.message[0], "kakko", 0]
+                    , [Kakko.zi[0], "kakko", 0]
+                    , [zi_i===0 ? zi : same_message_zi
+                        , "spell", 0]
+                    , [Kakko.zi[1], "kakko", 0]
+                    , [Delemeter.zi_grammar, "delem", 0]
+                    , ...messages_x
+                    , [Kakko.message[1], "kakko", 0]
+                ]
+                same_message_zi = ""
+                prebool = states
+                return
+            }
+            prebool = states
+            if (grams!==undefined){
+                grams.sort((d, f)=> d[2] - f[2])
+
                 const tar_grams = grams.filter(d=> d[2]=== zi_i)
                 let gramvalues = ``
                 let gramvalues_list: Glosstsx[] = []
@@ -954,6 +1258,7 @@ export function gloss(word: string) {
                             if (gram_set!==undefined){
                                 const status = gram_sets_status.get(name as GrammarSetName)
                                 if (status!==undefined){
+
                                     gram_set.forEach((name, i)=>{
                                         const mark = i===status.which? `*`: ""
                                         str += `, ${mark}${name}`
@@ -961,19 +1266,26 @@ export function gloss(word: string) {
                                             ...str_list
                                             ,[mark, "other", 0]
                                             ,[name, "attr", 0]
-                                            ,[", ", "delem", 0]
+                                            ,[Delemeter.listitem, "delem", 0]
                                         ]
                                     })
                                     str_list.pop()
+
+                                    str = str.substring(2)
+                                    grammarstr = `[${str}]`
+                                    grammarstr_list = [
+                                        [Kakko.gramset[0], "kakko", 0]
+                                        , ...str_list
+                                        ,[Kakko.gramset[1], "kakko", 0]
+                                    ]
+                                    if (!status.resolved) {
+                                        grammarstr_list = [
+                                            ...grammarstr_list
+                                            ,[`${status.value}`, "value", 0]
+                                        ]
+                                    }
                                 }
                             }
-                            str = str.substring(2)
-                            grammarstr = `[${str}]`
-                            grammarstr_list = [
-                                ["[", "kakko", 0]
-                                , ...str_list
-                                ,["]", "kakko", 0]
-                            ]
                         } else {
                             grammarstr = `${name}${value_number}`
                             grammarstr_list = [
@@ -990,30 +1302,42 @@ export function gloss(word: string) {
                         ,...grammarstr_list
                     ]
                 }
-                const zi_del = options.hide_each_zi? '': zi +Delemeter.zi_grammar
+                const zi_inkakko_list: Glosstsx[] = [
+                    [Kakko.zi[0], "kakko", 0]
+                    ,[zi, "spell", 0]
+                    ,[Kakko.zi[1] , "kakko", 0]
+                ]
+                const zi_inkakko = Kakko.zi[0]+zi+Kakko.zi[1]
+                const zi_del = options.hide_each_zi? '': zi_inkakko +Delemeter.zi_grammar
                 const zi_delist: Glosstsx[] = options.hide_each_zi
                 ? []
                 : [
-                    [zi, "spell", 0]
+                    ...zi_inkakko_list
                     ,[Delemeter.zi_grammar, "delem", 0]
                 ]
                 zis_str+= zi_del +gramvalues.substring(Delemeter.zi.length) +Delemeter.keitaiso
                 gramvalues_list.shift()
+
+                const close_x: Glosstsx = ["...", "delem", 0]
                 zis_str_list = [
                     ...zis_str_list
                     ,...zi_delist
                     ,...gramvalues_list
-                    ,[Delemeter.keitaiso, "delem", 0]
+                    ,...(!zi_close
+                        ? [close_x]
+                        : []
+                    )
                 ]
-            })
-            zis_str= zis_str.substring(0, zis_str.length-1)
-            zis_str_list.pop()
+                zis_str= zis_str.substring(0, zis_str.length-1)
+            }
+        })
+        zis_str_list.shift()
             //invalid string if exists, below code's res may missing that string
             // for (const [name, value_number, zi_i] of grams ){
             //     const grammarstr = options.or_value_to_name? value_to_name(name, value_number) : `${name}${value_number}`
             //     zis_str+=  grammarstr[zi_i] + Delemeter.zi
             // }
-        }
+
         setus_str+= zis_str +Delemeter.keitaiso_grammars
         setus_list = [
             ...setus_list

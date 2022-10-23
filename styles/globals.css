@@ -25,6 +25,9 @@ a {
   }
 } */
 
+.input {
+    width:
+}
 .center-sayu {
     margin: 0 10vw;
 }
@@ -40,6 +43,8 @@ textarea {
     --spell: brown;
     --delem: rgb(255, 0, 43);
     --other: black;
+    --message: red;
+    --kakko: purple;
 }
 span.spell {
     color: var(--spell)
@@ -52,4 +57,10 @@ span.attr {
 }
 span.delem {
     color: var(--delem)
+}
+span.kakko {
+    color: var(--kakko)
+}
+span.message {
+    color: var(--message)
 }

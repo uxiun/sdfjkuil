@@ -130,13 +130,25 @@ const sdfjkl_set = {
     j9: /[uiojklm,.]/,
     dk: /[sdfjkl]/,
 }
+type Kakko = {
+    zi: [string, string]
+    ,message: [string, string]
+    ,gramset: [string, string]
+}
+export const Kakko: Kakko = {
+    zi: ["'", "'"]
+    ,message: ["(", ")"]
+    ,gramset: ["[", "]"]
+}
 type Delemeter = {
     word: string,
     grammar: string,
     keitaiso_grammars: string,
     keitaiso: string,
     zi: string,
-    zi_grammar: string,
+    zi_grammar: string
+    ,whitespace: string
+    ,listitem: string
 }
 export const Delemeter: Delemeter = {
     word: "  ,  ",
@@ -144,7 +156,9 @@ export const Delemeter: Delemeter = {
     keitaiso_grammars: "-",
     keitaiso: "/",
     zi: '.',
-    zi_grammar: ':'
+    zi_grammar: ">"
+    , whitespace: " "
+    , listitem: ", "
 }
 const Chars = "wersdfzxcuiojklm,."
 const grammar_values = {
@@ -216,6 +230,7 @@ export type GrammarTaku = {
     illovali: number,
     case: number,
     //orcase: number,
+    notspecified: number,
 }
 export const grammar_nantaku: GrammarTaku = {
     concatenation: 3,
@@ -242,6 +257,7 @@ export const grammar_nantaku: GrammarTaku = {
     illovali: 17,
     case: 68,
     //orcase: 2,
+    notspecified: 1,
 }
 const grammar_names = {
     con: "concatenation",
@@ -269,6 +285,7 @@ const grammar_names = {
     case: "case",
     // or: "orcase",
     skip: "skip",
+    notspeci: "notspecified",
 } as const
 export type GrammarName = typeof grammar_names[keyof typeof grammar_names]
 export type KeyInfo = {
@@ -735,6 +752,7 @@ const glosstag = {
     ,value: "value"
     ,kakko: "kakko"
     ,spell: "spell"
+    ,message: "message"
 } as const
 type Gloss = string
 type GlossTag = typeof glosstag[keyof typeof glosstag]

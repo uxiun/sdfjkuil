@@ -19,8 +19,7 @@ const InAndOut: VFC = () => {
     const mojimwbm = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const m = e.target.value
         setMoji(m)
-        const r = parse(m)
-        setRes(r)
+
     }
 
     //tameshi start
@@ -35,21 +34,48 @@ const InAndOut: VFC = () => {
                 rows={8}
                 className="input"
             />
-            <Out res={res} />
+            {/* <Out moji={moji} /> */}
         </>
     )
 }
 
+const In: VFC<SetState> = ({setstate}: SetState) => {
+    const [moji, setMoji] = useState("")
+    const moji_reflect = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const m = e.target.value
+        setMoji(m)
+        setstate.moji(m)
+    }
 
+    return (
+        <textarea
+            value={moji}
+            onChange={moji_reflect}
+            rows={8}
+            className="input"
+        />
+    )
+}
 
+type SetState = {
+    setstate: {
+        moji: (s: string) => void
+    }
+}
 
 const Parser: VFC = () => {
     //infile global object
-
+    const [m, setM] = useState("")
+    const set_moji = (m: string) => setM(m)
+    const setstate = {
+        moji: set_moji
+    }
     return (
-        <div className="mainpage center-sayu">
+        <div className="mainpage parser center-sayu">
             <h1>構文解析器</h1>
-            <InAndOut />
+            {/* <InAndOut /> */}
+            <In setstate={setstate} />
+            <Out moji={m} />
         </div>
     )
 }

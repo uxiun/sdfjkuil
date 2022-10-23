@@ -1,4 +1,5 @@
 import React from "react"
+import { parse } from "../../lib/Out"
 
 import {
     code_key_map
@@ -9,8 +10,17 @@ import {
     , SizeInfo
 } from "../../lib/Out"
 
-const Out: React.VFC<OutProps> = (props: OutProps) => {
-    const res = props.res === undefined
+type OutProps2 = {
+    moji: string
+}
+
+const Out: React.VFC<OutProps2> = ({moji}: {moji: string}) => {
+    keyinfo_list.forEach((keyinfo, i) => {
+        code_key_map.set(i, keyinfo)
+        char_code_map.set(keyinfo.char, i)
+    })
+    const parsed = parse(moji)
+    const res = parsed === undefined
         ? {
             res: [],
             info: {
@@ -19,11 +29,20 @@ const Out: React.VFC<OutProps> = (props: OutProps) => {
                 linebreak: 0,
             }
         }
-        : props.res
-    keyinfo_list.forEach((keyinfo, i) => {
-        code_key_map.set(i, keyinfo)
-        char_code_map.set(keyinfo.char, i)
-    })
+        : parsed
+    const res_html = res.res.map(([gyo, gyoxes], i) =>
+        <React.Fragment key={`gyo${i}`}>
+            <div className="gyo styled">{
+                gyoxes.map(([gloss, glosstag, tagclass], j)=> {
+                    const cl = `${glosstag} ${glosstag}${tagclass}`
+                    const key = `${i}${gloss}${j}`
+                    return <span className={cl} key={key}>{gloss}</span>
+                })
+            }</div>
+        </React.Fragment>
+    )
+
+
     const text_size_infos = [
         "mojisu"
         , "word"
@@ -31,28 +50,8 @@ const Out: React.VFC<OutProps> = (props: OutProps) => {
     ]
     return (
         <div className="output">
-            <div className="short">
-                {
-                    res.res.map(([gyo, gyoxes], i) =>
-                        <div key={`gyo${i}`}>
-                            {/* <div className="gyo">{gyo}</div> */}
-                            <div
-                                className="gyo styled"
-                                key={`styled_gyo${i}`}
-                            >
-                                {
-                                    gyoxes.map(([gloss, glosstag, tagclass])=> {
-                                        const cl = `${glosstag} ${glosstag}${tagclass}`
-                                        return <span className={cl} key={gloss}>{gloss}</span>
-                                    })
-                                }
-                            </div>
-                        </div>
-                    )
-                }
-            </div>
-            <div className="detail">
-                detail
+            <div className="gloss">
+                {res_html}
             </div>
             <div className="info">
                 {res.info

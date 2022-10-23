@@ -932,14 +932,16 @@ function read_kino(kino: string) {
     })
 
     const amari_zi = kino.substring(pre_looking_i)
-    const amari_m: Map<string, HandleState> = new Map([
-        [amari_zi, {
-            inlength: false
-            ,close: true
-            ,valid: true
-        }]
-    ])
-    setu_zi_s.push(amari_m)
+    if (amari_zi!==""){
+        const amari_m: Map<string, HandleState> = new Map([
+            [amari_zi, {
+                inlength: false
+                ,close: true
+                ,valid: true
+            }]
+        ])
+        setu_zi_s.push(amari_m)
+    }
 
     console.log(`read kino func, gram_resolved`, gram_resolved)
     console.log(`read kino func, gram_sets_status`, gram_sets_status)//ok

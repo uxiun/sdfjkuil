@@ -19,17 +19,21 @@ const Out: React.VFC<OutProps2> = ({moji}: {moji: string}) => {
         code_key_map.set(i, keyinfo)
         char_code_map.set(keyinfo.char, i)
     })
-    const parsed = parse(moji)
-    const res = parsed === undefined
-        ? {
-            res: [],
-            info: {
-                mojisu: 0,
-                word: 0,
-                linebreak: 0,
-            }
-        }
-        : parsed
+    const _moji = moji===undefined? "": moji
+    const parsed = parse(_moji)
+    const res =
+        // parsed === undefined
+        // ?
+        // {
+        //     res: [],
+        //     info: {
+        //         mojisu: 0,
+        //         word: 0,
+        //         linebreak: 0,
+        //     }
+        // }
+        // :
+        parsed
     const res_html = res.res.map(([gyo, gyoxes], i) =>
         <React.Fragment key={`gyo${i}`}>
             <div className="gyo styled">{

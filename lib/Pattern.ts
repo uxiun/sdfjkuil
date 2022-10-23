@@ -582,7 +582,7 @@ function read_kino(kino: string) {
     const gram_sets_status: Map<GrammarSetName, GramSetStatus> = new Map()
     const gram_resolved: GramResolved = new Map()
     let skipped_slots: Map<SlotId, SkippedBy> = new Map()
-    let setu_zi_s: Map<string, HandleState>[] = [] //let for closing gramset
+    let setu_zi_s: Map<string, HandleState>[][] = [] //let for closing gramset
 
     let looking_i = 1
     let pre_looking_i = 0
@@ -630,9 +630,10 @@ function read_kino(kino: string) {
         console.log(`slot${slot_i} was skipped <-`, has_skipped)
         console.log(`grams=`, grams)
         console.log(`reader map=`, reader_map)
-        let newsetu: Map<string, HandleState> = new Map()
+        let newsetulist: Map<string, HandleState>[] = []
         let dont_count_setu = false
         reader_map.forEach(([katate, zi_reader], n_zi)=>{ //inscope 1zi target
+            let newsetu: Map<string, HandleState> = new Map()
             if (dont_count_setu) return
 
             let overlength = false
@@ -646,7 +647,7 @@ function read_kino(kino: string) {
             console.log(`str and code: ${tar_str}, ${tar_code}`)
             // newsetu.push(tar_str)
             const where0: Where = [setu_zi_s.length,
-                newsetu.size
+                n_zi //bug? so changed to n_zi
             ]
             const where = has_skipped ? skipped_by : where0
 
@@ -695,29 +696,7 @@ function read_kino(kino: string) {
 
                 }
             }
-            // if (!has_skipped && tar_code !== undefined) {
-            //     const getter = katate? tar_code%shift_num : tar_code
-            //     slot_reader = zi_reader.get(getter)
-            //     if (slot_reader===undefined){
-            //         console.log(`'${tar_str}' is invalid char here`)
-            //     }
-            // } else if (tar_str === '') {
-            //     console.log(`skipped overlength`)
-            //     if (has_skipped){
-            //         for (const [_, value] of zi_reader) {
-            //             slot_reader = value
-            //             console.log(`break`)
-            //             break
-            //         }
-            //         console.log(`after break`)
-            //     }else{
-            //         continue
-            //     }
-            // } else {
-            //     console.log(`invalid char, continue`)
-            //     is_invalid_char = true
-            //     continue
-            // }
+
             if (slot_reader !== undefined) {
                 console.log("valid true. slot_reader:", slot_reader)
                 for (const [gramid, _gramvalue] of slot_reader) {
@@ -780,27 +759,22 @@ function read_kino(kino: string) {
                                     })
                                     resolved = true
                                     console.log("gramset dicide which")
-                                    const map = setu_zi_s[status.value_by[0]]
+                                    const maps = setu_zi_s[status.value_by[0]]
                                     //ある程度の長さを打つとmapがundefined
-                                    if (map===undefined){
+                                    if (maps===undefined){
                                         console.log("map is undefined")
                                         console.log("status", status)
                                         console.log("setu zi s: ", setu_zi_s)
                                         console.log("status.valueby", status.value_by[0])
                                     }else{
-                                        let i = 0
-                                        let keystr = undefined
-                                        map.forEach((states, str)=>{
-                                            if (i===status.value_by[1]){
-                                                keystr = str
-                                            }
-                                            i+=1
-                                        })
-                                        if (keystr!==undefined){
-                                            const t = map.get(keystr) //
-                                            if (t!==undefined){
-                                                t.close = true
-                                            }
+                                        const map = maps[status.value_by[1]]
+                                        if (map!==undefined){
+                                            map.forEach((handlestate, str)=> {
+                                                map.set(str, {
+                                                    ...handlestate
+                                                    , close: true
+                                                })
+                                            })
                                         }
                                     }
                                 } else if (!is_gram_choise && comple2 === 'value') {
@@ -812,27 +786,22 @@ function read_kino(kino: string) {
                                     })
                                     console.log("gramset dicide value")
                                     resolved = true
-                                    const map = setu_zi_s
+                                    const maps = setu_zi_s
                                     [status.which_by[0]]
-                                    if (map===undefined){
+                                    if (maps===undefined){
                                         console.log("map is undefined")
                                         console.log("status", status)
                                         console.log("setu zi s: ", setu_zi_s)
                                         console.log("status.whichby", status.which_by[0])
                                     }else{
-                                        let i = 0
-                                        let keystr = undefined
-                                        map.forEach((states, str)=>{
-                                            if (i===status.which_by[1]){
-                                                keystr = str
-                                            }
-                                            i+=1
-                                        })
-                                        if (keystr!==undefined){
-                                            const t = map.get(keystr) //
-                                            if (t!==undefined){
-                                                t.close = true
-                                            }
+                                        const map = maps[status.value_by[1]]
+                                        if (map!==undefined){
+                                            map.forEach((handlestate, str)=> {
+                                                map.set(str, {
+                                                    ...handlestate
+                                                    , close: true
+                                                })
+                                            })
                                         }
                                     }
                                 } else {
@@ -923,10 +892,11 @@ function read_kino(kino: string) {
                 pre_looking_i = looking_i
                 looking_i += 1
             }
+            newsetulist.push(newsetu)
         })
         // if (!has_skipped) setu_zi_s.push(newsetu)
         // if (!dont_count_setu)
-        setu_zi_s.push(newsetu)
+        setu_zi_s.push(newsetulist)
         // has skipped: false and
 
     })
@@ -940,7 +910,7 @@ function read_kino(kino: string) {
                 ,valid: true
             }]
         ])
-        setu_zi_s.push(amari_m)
+        setu_zi_s.push([amari_m])
     }
 
     console.log(`read kino func, gram_resolved`, gram_resolved)
@@ -1053,7 +1023,7 @@ type IsSetName = boolean
 type SetuMapName = [IsSetName, GrammarName | GrammarSetName]
 type SetuMapValue = [SetuMapName, number, ZiId]
 type ReadKinoReturn = [
-    Map<string, HandleState>[]
+    Map<string, HandleState>[][]
     , Map<number, SetuMapValue[]>
     , Map<GrammarSetName, GramSetStatus>
 ]
@@ -1078,11 +1048,11 @@ export function gloss(word: string) {
     const [setu_zi_s, setu_grams_m, gram_sets_status]: ReadKinoReturn = read_kino(word)
     let setus_str = ``
     let setus_list: Glosstsx[] = []
-    setu_zi_s.forEach((zi_states, setu_i)=>{
+    setu_zi_s.forEach((zi_states_maps, setu_i)=>{
         const grams = setu_grams_m.get(setu_i)
         let zis_str = ``
         let zis_str_list: Glosstsx[] = []
-        let overlength_completely: boolean|undefined = undefined
+        let overlength_completely = false
 
         type PreCheckItem = {
             list: string[]
@@ -1117,247 +1087,224 @@ export function gloss(word: string) {
             ,valid: true
             ,close: true
         }
-        console.log("zi_states", zi_states)
-        if (zi_states.size === 0) overlength_completely = true
-        let same_message_zi = ""
-        let zi_i = -1
-        zi_states.forEach((states, zi)=>{
-            zi_i += 1
+        if (zi_states_maps.length === 0) overlength_completely = true
+        let before_completely = true
+        let setu_denpa = false
+        zi_states_maps.forEach((zi_states, zi_i)=>{
+            console.log("zi_states_maps.forEach(")
+            let same_message_zi = ""
             zis_str_list = [
                 ...zis_str_list
                 ,[Delemeter.keitaiso, "delem", 0]
             ]
-            console.log("zi_states.forEach(")
-            console.log("zi", zi)
-            console.log("states", states)
-            console.log("same_message_zi", same_message_zi)
-            let kirikawaris = true
-            let nomessage = true
-            let zi_close = true
-            let show_message = false
-            let add_samessage_zi = false
-            let checked_states: string[] = []
-            Object.entries(states).forEach(([key, value])=>{
 
-                zistateM.set(zi, states)
-                const state = pre_check[key as keyof PreChecks]
-                const pre = prebool[key as keyof HandleState]
+            before_completely =
+                zi_states.size === 0
+                && before_completely
 
-                if (!value) {
-                    if (key==="inlength" || key==="valid") {
-                        add_samessage_zi = true
-                        if (
-                            (value !== pre)
-                        ||  (zi_i===zi_states.size-1 && add_samessage_zi)
-                        ) {
-                            show_message = true
-                        }
-                        if (key==="inlength"){
-                            if (overlength_completely===undefined){
-                                overlength_completely = true
-                            }
-                        }
-                    }
-                } else {
-                    if (key==="inlength" || key==="valid") {
-                        if (!pre) show_message = true
-                        if (key==="inlength"){
-                            if (overlength_completely!==undefined){
-                                overlength_completely = false
-                            }
-                        }
-                    }
-                }
-                if (show_message) checked_states.push(key)
-                // if (!value && key==="close"){
-                //     zi_close = false
-                // }
-                // if (pre === value) {
-                //     if (!value) {
-                //         add_samessage_zi = true
-                //     }
-                // } else {
-                //     if (key==="inlength" || key==="valid") {
-                //         if (!pre || (zi_i===0 && !value)){
-                //             show_message = true
-                //             checked_states.push(key)
-                //         }
-                //     }
-                // }
 
-                // if (!value) {
-                //     const lasti = state.list.length-1
-                //     if (lasti<0 || !state.pre){
-                //         state.list.push(zi)
-                //     } else {
-                //         state.list[lasti]+=zi
-                //     }
-                //     state.pre = true
-                //     prebool[key as keyof HandleState] = true
-                //     if (key==="inlength" || key==="valid"){
-                //         kirikawaris = false
-                //         nomessage = false
-                //         checkeds.push(zi)
-                //     }
-                // } else if (state.pre || pre) {
-
-                // } else {
-                //     if (key==="inlength" || key==="valid"){
-                //         kirikawaris = false
-                //     }
-                // }
-            })
-            if (add_samessage_zi) same_message_zi+=zi
-            if (show_message){
-                console.log("show message, zi:", zi)
-                console.log("prebool:", prebool)
+            let overlength_setu: boolean|undefined = undefined
+            zi_states.forEach((states, zi)=>{
+                overlength_completely = false
+                console.log("zi_states.forEach(")
+                console.log("zi", zi)
                 console.log("states", states)
-                console.log("zi_i", zi_i)
                 console.log("same_message_zi", same_message_zi)
-                let messages: string[] = []
-                for (const state of checked_states) {
-                    if (state==="inlength") messages.push("overlength")
-                    if (state==="valid") messages.push("invalid at least here")
-                }
-                // if (!prebool.inlength  || zi_i===0 && !states.inlength){
-                //     messages.push("overlength")
-                // }
-                // if (!prebool.valid  || zi_i===0 && !states.valid){
-                //     messages.push(`invalid at least here`)
-                // }
-                let messages_x: Glosstsx[] = []
-                for (const message of messages){
-                    messages_x = [
-                        ...messages_x
-                        , [message, "message", 0]
-                        , [", ", "delem", 0]
-                    ]
-                }
-                messages_x.pop()
-                zis_str_list = [
-                    ...zis_str_list
-                    , [Kakko.message[0], "kakko", 0]
-                    , [Kakko.zi[0], "kakko", 0]
-                    , [zi_i===0 ? zi : same_message_zi
-                        , "spell", 0]
-                    , [Kakko.zi[1], "kakko", 0]
-                    , [Delemeter.zi_grammar, "delem", 0]
-                    , ...messages_x
-                    , [Kakko.message[1], "kakko", 0]
-                ]
-                same_message_zi = ""
-                prebool = states
-                return
-            }
-            prebool = states
-            if (grams!==undefined){
-                grams.sort((d, f)=> d[2] - f[2])
+                let kirikawaris = true
+                let nomessage = true
+                let zi_close = true
+                let show_message = false
+                let add_samessage_zi = false
+                let checked_states: string[] = []
 
-                const tar_grams = grams.filter(d=> d[2]=== zi_i)
-                let gramvalues = ``
-                let gramvalues_list: Glosstsx[] = []
-                for (const tar_gram of tar_grams){
-                    const [setu_map_name, value_number, zi_ii]: SetuMapValue = tar_gram
-                    const [is_set_name, name] = setu_map_name
-                    let grammarstr = ``
-                    let grammarstr_list: Glosstsx[] = []
-                    if (options.or_value_to_name){
-                        grammarstr = value_to_name([setu_map_name, value_number], value_number)
-                    } else {
-                        if (is_set_name){
-                            const gram_set = grammar_sets.get(name as GrammarSetName)
-                            let str =``
-                            let str_list: Glosstsx[] = []
-                            if (gram_set!==undefined){
-                                const status = gram_sets_status.get(name as GrammarSetName)
-                                if (status!==undefined){
+                Object.entries(states).forEach(([key, value])=>{
 
-                                    gram_set.forEach((name, i)=>{
-                                        const mark = i===status.which? `*`: ""
-                                        str += `, ${mark}${name}`
-                                        str_list = [
-                                            ...str_list
-                                            ,[mark, "other", 0]
-                                            ,[name, "attr", 0]
-                                            ,[Delemeter.listitem, "delem", 0]
-                                        ]
-                                    })
-                                    str_list.pop()
+                    zistateM.set(zi, states)
+                    const state = pre_check[key as keyof PreChecks]
+                    const pre = prebool[key as keyof HandleState]
 
-                                    str = str.substring(2)
-                                    grammarstr = `[${str}]`
-                                    grammarstr_list = [
-                                        [Kakko.gramset[0], "kakko", 0]
-                                        , ...str_list
-                                        ,[Kakko.gramset[1], "kakko", 0]
-                                    ]
-                                    if (!status.resolved) {
-                                        grammarstr_list = [
-                                            ...grammarstr_list
-                                            ,[`${status.value}`, "value", 0]
-                                        ]
-                                    }
+                    if (!value) {
+                        if (key==="inlength" || key==="valid") {
+                            add_samessage_zi = true
+                            if (
+                                (value !== pre)
+                            ||  (zi_i===zi_states.size-1 && add_samessage_zi)
+                            ) {
+                                show_message = true
+                            }
+                            if (key==="inlength"){
+                                if (overlength_setu===undefined){
+                                    overlength_setu = true
                                 }
                             }
-                        } else {
-                            grammarstr = `${name}${value_number}`
-                            grammarstr_list = [
-                                [name, "attr", 0]
-                                ,[`${value_number}`, "value", 0]
-                            ]
+                        }
+                    } else {
+                        if (key==="inlength" || key==="valid") {
+                            if (!pre) show_message = true
+                            if (key==="inlength"){
+                                if (overlength_setu!==undefined){
+                                    overlength_setu = false
+                                }
+                            }
                         }
                     }
+                    if (show_message) checked_states.push(key)
 
-                    gramvalues+= Delemeter.zi +grammarstr
-                    gramvalues_list = [
-                        ...gramvalues_list
-                        ,[Delemeter.zi, "delem", 0]
-                        ,...grammarstr_list
+                })
+                if (add_samessage_zi) same_message_zi+=zi
+                if (show_message){
+                    console.log("show message, zi:", zi)
+                    console.log("prebool:", prebool)
+                    console.log("states", states)
+                    console.log("zi_i", zi_i)
+                    console.log("same_message_zi", same_message_zi)
+                    let messages: string[] = []
+                    for (const state of checked_states) {
+                        if (state==="inlength") messages.push("overlength")
+                        if (state==="valid") messages.push("invalid at least here")
+                    }
+
+                    let messages_x: Glosstsx[] = []
+                    for (const message of messages){
+                        messages_x = [
+                            ...messages_x
+                            , [message, "message", 0]
+                            , [", ", "delem", 0]
+                        ]
+                    }
+                    messages_x.pop()
+                    zis_str_list = [
+                        ...zis_str_list
+                        , [Kakko.message[0], "kakko", 0]
+                        , [Kakko.zi[0], "kakko", 0]
+                        , [zi_i===0 ? zi : same_message_zi
+                            , "spell", 0]
+                        , [Kakko.zi[1], "kakko", 0]
+                        , [Delemeter.zi_grammar, "delem", 0]
+                        , ...messages_x
+                        , [Kakko.message[1], "kakko", 0]
                     ]
+                    same_message_zi = ""
+                    prebool = states
+                    return
                 }
-                const zi_inkakko_list: Glosstsx[] = [
-                    [Kakko.zi[0], "kakko", 0]
-                    ,[zi, "spell", 0]
-                    ,[Kakko.zi[1] , "kakko", 0]
-                ]
-                const zi_inkakko = Kakko.zi[0]+zi+Kakko.zi[1]
-                const zi_del = options.hide_each_zi? '': zi_inkakko +Delemeter.zi_grammar
-                const zi_delist: Glosstsx[] = options.hide_each_zi
-                ? []
-                : [
-                    ...zi_inkakko_list
-                    ,[Delemeter.zi_grammar, "delem", 0]
-                ]
-                zis_str+= zi_del +gramvalues.substring(Delemeter.zi.length) +Delemeter.keitaiso
-                gramvalues_list.shift()
+                prebool = states
+                if (grams!==undefined){
+                    grams.sort((d, f)=> d[2] - f[2])
 
-                const close_x: Glosstsx = ["...", "delem", 0]
-                zis_str_list = [
-                    ...zis_str_list
-                    ,...zi_delist
-                    ,...gramvalues_list
-                    ,...(!zi_close
-                        ? [close_x]
-                        : []
-                    )
-                ]
-                zis_str= zis_str.substring(0, zis_str.length-1)
-            }
+                    const tar_grams = grams.filter(d=> d[2]=== zi_i)
+                    console.log("tar_grams=", tar_grams)
+                    let gramvalues = ``
+                    let gramvalues_list: Glosstsx[] = []
+                    for (const tar_gram of tar_grams){
+                        const [setu_map_name, value_number, zi_ii]: SetuMapValue = tar_gram
+                        const [is_set_name, name] = setu_map_name
+                        let grammarstr = ``
+                        let grammarstr_list: Glosstsx[] = []
+                        if (options.or_value_to_name){
+                            grammarstr = value_to_name([setu_map_name, value_number], value_number)
+                        } else {
+                            if (is_set_name){
+                                const gram_set = grammar_sets.get(name as GrammarSetName)
+                                let str =``
+                                let str_list: Glosstsx[] = []
+                                if (gram_set!==undefined){
+                                    const status = gram_sets_status.get(name as GrammarSetName)
+                                    if (status!==undefined){
+
+                                        gram_set.forEach((name, i)=>{
+                                            const mark = i===status.which? `*`: ""
+                                            str += `, ${mark}${name}`
+                                            str_list = [
+                                                ...str_list
+                                                ,[mark, "other", 0]
+                                                ,[name, "attr", 0]
+                                                ,[Delemeter.listitem, "delem", 0]
+                                            ]
+                                        })
+                                        str_list.pop()
+
+                                        str = str.substring(2)
+                                        grammarstr = `[${str}]`
+                                        grammarstr_list = [
+                                            [Kakko.gramset[0], "kakko", 0]
+                                            , ...str_list
+                                            ,[Kakko.gramset[1], "kakko", 0]
+                                        ]
+                                        if (!status.resolved) {
+                                            grammarstr_list = [
+                                                ...grammarstr_list
+                                                ,[`${status.value}`, "value", 0]
+                                            ]
+                                        }
+                                    }
+                                }
+                            } else {
+                                grammarstr = `${name}${value_number}`
+                                grammarstr_list = [
+                                    [name, "attr", 0]
+                                    ,[`${value_number}`, "value", 0]
+                                ]
+                            }
+                        }
+
+                        gramvalues+= Delemeter.zi +grammarstr
+                        gramvalues_list = [
+                            ...gramvalues_list
+                            ,[Delemeter.zi, "delem", 0]
+                            ,...grammarstr_list
+                        ]
+                    }
+                    const zi_inkakko_list: Glosstsx[] = [
+                        [Kakko.zi[0], "kakko", 0]
+                        ,[zi, "spell", 0]
+                        ,[Kakko.zi[1] , "kakko", 0]
+                    ]
+                    const zi_inkakko = Kakko.zi[0]+zi+Kakko.zi[1]
+                    const zi_del = options.hide_each_zi? '': zi_inkakko +Delemeter.zi_grammar
+                    const zi_delist: Glosstsx[] = options.hide_each_zi
+                    ? []
+                    : [
+                        ...zi_inkakko_list
+                        ,[Delemeter.zi_grammar, "delem", 0]
+                    ]
+                    zis_str+= zi_del +gramvalues.substring(Delemeter.zi.length) +Delemeter.keitaiso
+                    gramvalues_list.shift()
+
+                    const close_x: Glosstsx = ["...", "delem", 0]
+                    zis_str_list = [
+                        ...zis_str_list
+                        ,...zi_delist
+                        ,...gramvalues_list
+                        ,...(!zi_close
+                            ? [close_x]
+                            : []
+                        )
+                    ]
+                    zis_str= zis_str.substring(0, zis_str.length-1)
+                }
+            })
+            console.log("overlength_completely=false, overlength_setu=", overlength_setu)
+            console.log("overlength_completely=false, zi_states=", zi_states)
+            if (overlength_setu!==undefined && zi_i===zi_states_maps.length-1 && !before_completely) setu_denpa = overlength_setu
+
         })
-        zis_str_list.shift()
-            //invalid string if exists, below code's res may missing that string
-            // for (const [name, value_number, zi_i] of grams ){
-            //     const grammarstr = options.or_value_to_name? value_to_name(name, value_number) : `${name}${value_number}`
-            //     zis_str+=  grammarstr[zi_i] + Delemeter.zi
-            // }
+
+
+        if (zi_states_maps.length > 0) zis_str_list.shift()
 
         setus_str+= zis_str +Delemeter.keitaiso_grammars
-        if (!overlength_completely || setu_i===setu_zi_s.length-1){
+        if (
+            !before_completely
+         && !overlength_completely
+        ){//|| setu_i===setu_zi_s.length-1
             setus_list = [
                 ...setus_list
                 ,...zis_str_list
                 ,[Delemeter.keitaiso_grammars, "delem", 0]
             ]
+        } else {
+            console.log("overlength_completely=true, zi_states_maps", zi_states_maps)
         }
     })
     setus_str = setus_str.substring(0, setus_str.length - Delemeter.keitaiso_grammars.length)

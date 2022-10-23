@@ -41,10 +41,12 @@ a {
     --value: rgb(39, 159, 9);
     --attr: rgb(38, 67, 130);
     --spell: brown;
-    --delem: rgb(255, 0, 43);
+    --errorhere: rgb(255, 0, 0);
+    --delem: rgb(255, 0, 174);
     --other: black;
     --message: red;
     --kakko: purple;
+    --abouterror: red;
 }
 span.spell {
     color: var(--spell)
@@ -63,4 +65,10 @@ span.kakko {
 }
 span.message {
     color: var(--message)
+}
+span.abouterror {
+    color: var(--abouterror)
+}
+span.errorhere {
+    color: var(--errorhere)
 }

@@ -529,7 +529,58 @@ let kino_rules = new Map([
 
 function read_root(word: string) {
     const match = word.match(/^[wersdfzxcuiojklm,\.]+$/)
-    return match
+    const ngmatch = word.match(/^[^wersdfzxcuiojklm,\.]+$/g)
+    type IsOk = boolean
+    let strlist: string[] = []
+    let last_ok = true
+    let start_by_ok = true
+    let allok = true
+    for (const char of word) {
+        const ngone = char.match(/^[^wersdfzxcuiojklm,\.]+$/)
+        console.log("ngone", ngone)
+        if (ngone) {
+            allok = false
+            if (strlist.length===0 || last_ok) {
+                if (strlist.length===0) start_by_ok = false
+                strlist.push(char)
+            }else{
+                let before = strlist[strlist.length-1] //値渡し
+                strlist[strlist.length-1] += char
+            }
+            last_ok = false
+        } else {
+            if (strlist.length===0 || !last_ok) {
+                strlist.push(char)
+            }else{
+                let before = strlist[strlist.length-1] //値渡し
+                strlist[strlist.length-1] += char
+            }
+            last_ok = true
+        }
+    }
+    let reslist: Glosstsx[] = []
+    if (allok) {
+        reslist.push(
+            [word, "spell", 0]
+        )
+    } else {
+
+        strlist.forEach((str, i)=>{
+            const g = i%2===0
+            const isok = start_by_ok === g
+            const topush: Glosstsx = isok
+            ? [str, "spell", 0]
+            : [str, "errorhere", 0]
+            reslist.push(topush)
+        })
+        reslist = [
+            ...reslist
+            , [Delemeter.zi_grammar, "delem", 0]
+            , ["red invalid", "abouterror", 0]
+        ]
+    }
+
+    return reslist
 }
 type GrammaResolve = {
     ruler_index: number,
@@ -753,6 +804,8 @@ const glosstag = {
     ,kakko: "kakko"
     ,spell: "spell"
     ,message: "message"
+    ,errorhigh: "errorhere"
+    ,errordisc: "abouterror"
 } as const
 type Gloss = string
 type GlossTag = typeof glosstag[keyof typeof glosstag]
@@ -799,7 +852,8 @@ function readgyo(gyo: string, gyosu: number) {
                 if (r) {
                     wordres_list.push(`${word} :root`)
                     htmlist.push( [
-                        [word, "spell", 0]
+                        ...r
+                        // ,[word, "spell", 0]
                         ,[" :", "delem", 0]
                         ,["root", "attr", 1]
                     ])

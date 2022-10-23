@@ -25,14 +25,14 @@ a {
   }
 } */
 
-.input {
-    width:
-}
 .center-sayu {
     margin: 0 10vw;
 }
-textarea {
-    font-size: 1rem !important;
+.input {
+    font-size: 1.3rem !important;
+}
+.gloss {
+    font-size: 1.1rem !important;
 }
 
 

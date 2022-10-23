@@ -1082,7 +1082,7 @@ export function gloss(word: string) {
         const grams = setu_grams_m.get(setu_i)
         let zis_str = ``
         let zis_str_list: Glosstsx[] = []
-
+        let overlength_completely: boolean|undefined = undefined
 
         type PreCheckItem = {
             list: string[]
@@ -1118,6 +1118,7 @@ export function gloss(word: string) {
             ,close: true
         }
         console.log("zi_states", zi_states)
+        if (zi_states.size === 0) overlength_completely = true
         let same_message_zi = ""
         let zi_i = -1
         zi_states.forEach((states, zi)=>{
@@ -1151,10 +1152,20 @@ export function gloss(word: string) {
                         ) {
                             show_message = true
                         }
+                        if (key==="inlength"){
+                            if (overlength_completely===undefined){
+                                overlength_completely = true
+                            }
+                        }
                     }
                 } else {
                     if (key==="inlength" || key==="valid") {
                         if (!pre) show_message = true
+                        if (key==="inlength"){
+                            if (overlength_completely!==undefined){
+                                overlength_completely = false
+                            }
+                        }
                     }
                 }
                 if (show_message) checked_states.push(key)
@@ -1341,11 +1352,13 @@ export function gloss(word: string) {
             // }
 
         setus_str+= zis_str +Delemeter.keitaiso_grammars
-        setus_list = [
-            ...setus_list
-            ,...zis_str_list
-            ,[Delemeter.keitaiso_grammars, "delem", 0]
-        ]
+        if (!overlength_completely || setu_i===setu_zi_s.length-1){
+            setus_list = [
+                ...setus_list
+                ,...zis_str_list
+                ,[Delemeter.keitaiso_grammars, "delem", 0]
+            ]
+        }
     })
     setus_str = setus_str.substring(0, setus_str.length - Delemeter.keitaiso_grammars.length)
     setus_list.pop()

@@ -31,7 +31,7 @@ const InAndOut: VFC = () => {
                 // ref={mojiRef}
                 value={moji}
                 onChange={mojimwbm}
-                rows={8}
+                rows={3}
                 className="input"
             />
             {/* <Out moji={moji} /> */}
@@ -51,7 +51,7 @@ const In: VFC<SetState> = ({setstate}: SetState) => {
         <textarea
             value={moji}
             onChange={moji_reflect}
-            rows={8}
+            rows={3}
             className="input"
         />
     )

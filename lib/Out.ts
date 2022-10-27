@@ -229,6 +229,8 @@ export type GrammarTaku = {
     // expectation: number,
     illovali: number,
     case: number,
+    casegroup: number,
+    aspector: number,
     //orcase: number,
     notspecified: number,
 }
@@ -256,6 +258,8 @@ export const grammar_nantaku: GrammarTaku = {
     //expectation: 3,
     illovali: 17,
     case: 68,
+    casegroup: 4,
+    aspector: 2,
     //orcase: 2,
     notspecified: 1,
 }
@@ -283,6 +287,8 @@ const grammar_names = {
     // exp: "expectation",
     ilvl: "illovali",
     case: "case",
+    asor: 'aspector',
+    caseb: 'casegroup',
     // or: "orcase",
     skip: "skip",
     notspeci: "notspecified",

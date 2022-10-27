@@ -1,4 +1,5 @@
 import React from "react"
+import {useState} from 'react'
 import { parse } from "../../lib/Out"
 
 import {
@@ -21,25 +22,16 @@ const Out: React.VFC<OutProps2> = ({moji}: {moji: string}) => {
     })
     const _moji = moji===undefined? "": moji
     const parsed = parse(_moji)
-    const res =
-        // parsed === undefined
-        // ?
-        // {
-        //     res: [],
-        //     info: {
-        //         mojisu: 0,
-        //         word: 0,
-        //         linebreak: 0,
-        //     }
-        // }
-        // :
-        parsed
+    const res = parsed
+    const map = new Map<string, boolean>
+    const [isfirst, setisfirst] = useState(map)
     const res_html = res.res.map(([gyo, gyoxes], i) =>
         <React.Fragment key={`gyo${i}`}>
             <div className="gyo styled">{
                 gyoxes.map(([gloss, glosstag, tagclass], j)=> {
                     const cl = `${glosstag} ${glosstag}${tagclass}`
-                    const key = `${i}${gloss}${j}`
+                    let key = `${i}${gloss}${j}`
+                    if (glosstag==='value') key+=`${Math.random()}`
                     return <span className={cl} key={key}>{gloss}</span>
                 })
             }</div>

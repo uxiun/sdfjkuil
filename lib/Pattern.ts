@@ -16,6 +16,7 @@ type GrammarSet = GrammarName[]
 const grammar_sets: Map<GrammarSetName, GrammarSet> = new Map([
     ["scope_mood", ["casescope", "mood"]]
     ,["nines", ["valence", "phase", "effect", "level"]]
+
 ])
 
 const GrammarValues: Map<GrammarName, string[]> = new Map()
@@ -32,7 +33,7 @@ type Slot = {
 const slots: Slot[] = [
     {
         grams: [
-            "stem" //2
+            "version" //2
             , [
                 []
                 ,[//e,s
@@ -43,6 +44,10 @@ const slots: Slot[] = [
                 ]
                 ,[0,2,3,5]
                 ,[0,3,6]
+                ,[
+                    ['aspector', 0]
+                    ,6
+                ]
             ]//GramId 1
         ]
         ,fill: []
@@ -72,13 +77,20 @@ const slots: Slot[] = [
     {//3
         grams: [
             "affiliation"
-            ,"extension"
+            ,["scope_mood", true]//2
         ]
         ,fill: [
             [[0]]
         ]
     },
     {//4
+        grams: [
+            'extension'
+            ,'aspector'
+        ]
+        ,fill: []
+    },
+    {//5
         grams: [
             "perspective"
             ,"essence"
@@ -87,7 +99,7 @@ const slots: Slot[] = [
             [[0]]
         ]
     },
-    {//5
+    {//6
         grams: [
             ["nines", false]
             ,["nines", true]
@@ -96,16 +108,16 @@ const slots: Slot[] = [
             [[0]]
         ]
     },
-    {//6
+    {//7
         grams: [
-            "context"
-            ,["scope_mood", true]//2
+            'context'
+            ,'casegroup'
         ]
         ,fill: [
             [[0]]
         ]
     },
-    {//7
+    {//8
         grams: [
             "illovali"
         ]
@@ -252,7 +264,7 @@ type GramId = number
 type TakuSize = number
 type SuTypeS = [TakuSize, GramType, GramId][]
 type SuTypeM = Map<GramId, [TakuSize, GramType]>
-function su_type_analyze(slot: Slot ){
+function su_type_analyze(slot: Slot, gram_resolved: GramResolved ){
     type R = {
         grams: [SuTypeM, SuTypeS]
         ,fill: [SuTypeM, SuTypeS]
@@ -265,6 +277,9 @@ function su_type_analyze(slot: Slot ){
         value.forEach((gram, i) => {
             if (typeof gram === "string") {//GrammarName
                 const name = gram as GrammarName
+                const resolve = gram_resolved.get(name)
+                if (resolve!==undefined) return
+
                 const value_su = grammar_nantaku[name as keyof GrammarTaku]
                 console.log(`grammar name detected. ${gram}: ${value_su}`)
                 fills.push([value_su, 0, i])
@@ -307,14 +322,17 @@ function su_type_analyze(slot: Slot ){
     return m
 }
 
-function process(slot: Slot, gram_resolved: GramResolved) {
+function process(slot: Slot
+    , gram_resolved: GramResolved
+) {
     console.log(`\nprocess()`)
+    // console.log("gram_resolved=", gram_resolved)
     const grams = slot.grams
     let su_type_m: Map<GramId, [TakuSize, GramType]> = new Map()
     //pattern,         , index
     let su_type_s: [TakuSize, GramType, GramId][] = []
 
-    const sutype_map = su_type_analyze(slot)
+    const sutype_map = su_type_analyze(slot, gram_resolved)
     const su_type_tuple = sutype_map.get("grams")
     if (su_type_tuple===undefined) return
     [su_type_m, su_type_s] = su_type_tuple
@@ -340,7 +358,11 @@ function process(slot: Slot, gram_resolved: GramResolved) {
                 resolved = true
             }
         }
-        if (continue_used || resolved) continue //★
+        if (continue_used || resolved) {
+            console.log('continue_used or resolved, so continue')
+            console.log(`grammar...`, slot.grams[gramid])
+            continue //★
+        }
         gram_used_map.set(gramid, true)
         used_gramsid_list.push(gramid)
         const taku = su_type[0]
@@ -453,7 +475,7 @@ function process(slot: Slot, gram_resolved: GramResolved) {
             }
         } else if (taku > 0) {//1,2,3,4,5
             // const sho_large = ~~(key_size / taku)
-            const sho = ~~(shift_num / taku)
+            const sho = ~~(key_size / taku)
             const buddy = find_buddy(gram_used_map, su_type_s, sho)
 
             const i = nokos_order.length - taku
@@ -483,37 +505,83 @@ function process(slot: Slot, gram_resolved: GramResolved) {
                 // ? (d: number) => 0 <= d && d < 10
                 // : (d: number) => 0 <= d%shift_num && d%shift_num < 10
                 let range = (d:number) => 0 <= d && d < 10;
-                if (seki === 0) {//5*2, 5*4...xx
-                    buddy_classer = [(d:number) => d%shift_num %2, true]
-                    // if (real_seki===10) buddy_classer = [d=> (d%shift_num)%2, true]
-                    // if (real_seki===20) buddy_classer = [d=> {
-                    //     const fj = d < 10
-                    //     const di = d%2
-                    //     if (fj) {
-                    //         return di
-                    //     } else {
-                    //         return di+2
-                    //     }
-                    // }, true]
-                }else if (seki === 9) {
-                    range = d => 0 <= d && d < 9
-                    classer = [d => d % 3, true]
-                } else {
-                    console.log("buddy find, range", nokos_order[shift_num - seki - 2])
-                    range = d => nokos_order[shift_num - seki - 2].includes(d)
+                if (real_seki<=shift_num){
 
-                    switch (seki) {
-                        case 8: //4,2
-                            buddy_classer = [d => d%shift_num % 2, true]
+                    if (seki === 0) {//5*2, 5*4...xx
+                        buddy_classer = [(d:number) => d%shift_num %2, true]
+                        // if (real_seki===10) buddy_classer = [d=> (d%shift_num)%2, true]
+                        // if (real_seki===20) buddy_classer = [d=> {
+                        //     const fj = d < 10
+                        //     const di = d%2
+                        //     if (fj) {
+                        //         return di
+                        //     } else {
+                        //         return di+2
+                        //     }
+                        // }, true]
+
+                    }else if (seki === 9) {
+                        range = d => 0 <= d && d < 9
+                        classer = [d => d % 3, true]
+                    } else {
+                        console.log("buddy find, range", nokos_order[shift_num - seki - 2])
+                        range = d => nokos_order[shift_num - seki - 2].includes(d)
+
+                        switch (seki) {
+                            case 8: //4,2
+                                buddy_classer = [d => d%shift_num % 2, true]
+                                break
+                            case 6://3,2
+                                classer = [d => d%shift_num % 3, true]
+                                break
+                            case 4:
+                                classer = [d => (d%shift_num === 3 || d%shift_num === 5) ? 1 : 0, true]
+                                break
+                            default:
+                                console.log("impossible seki")
+                        }
+                    }
+                } else {
+                    switch (real_seki) {
+                        case 16:
+                            range = d => nokos_order[0].includes(d%shift_num)
+                            if (taku===8){
+                                buddy_classer = [(d:number) => d<shift_num? 0: 1, true]
+                            }else{
+                                classer = [d => d%shift_num % 2+ (d<shift_num? 0: 2), true]
+                            }
                             break
-                        case 6://3,2
-                            classer = [d => d%shift_num % 3, true]
+                        case 20:
+                            range = d => 0 <= d && d < key_size
+                            buddy_classer = [d => d%shift_num % 2+ (d<shift_num? 0: 2), true]
                             break
-                        case 4:
-                            classer = [d => (d%shift_num === 3 || d%shift_num === 5) ? 1 : 0, true]
+                        case 15:
+                            range = d => d < 9 || nokos_order[3].includes(d%shift_num)
+                            buddy_classer = [ d=> {
+                                    if (d<shift_num){
+                                        return d%2
+                                    }else{
+                                        return 2
+                                    }
+                                }
+                                ,true
+                            ]
+                            break
+                        case 12:
+                            range = d => d<9 || nokos_order[5].includes(d%shift_num)
+                            classer = [
+                                d => {
+                                    if (d<shift_num){
+                                        return ~~(d/3)
+                                    }else{
+                                        return 3
+                                    }
+                                }
+                                ,true
+                            ]
                             break
                         default:
-                            console.log("impossible seki")
+                            console.log("impossible real seki", real_seki)
                     }
                 }
                 const msm: Masume = {
@@ -548,6 +616,7 @@ function process(slot: Slot, gram_resolved: GramResolved) {
     // })
     // console.log("masumes=", masumes)
     used_gramsid_list.sort()
+    console.log('used_gramsid_list', used_gramsid_list)
     const outranges: number[][] = []
     for (const mainid of used_gramsid_list) {
         const masume = masumes.get(mainid)
@@ -716,9 +785,10 @@ function read_kino(kino: string) {
         // let su_type_m: SuTypeM = new Map()
         if (has_skipped){
             grams = slot.grams
-            const susutypem = su_type_analyze(slot)
-            const typegot = susutypem.get("grams")
+            const susutypem1 = su_type_analyze(slot, gram_resolved)
+            const typegot = susutypem1.get("grams")
             if (typegot===undefined) return
+            susutypem = susutypem1
             const [su_type_m, su_type_s] = typegot
             const slotreader: SlotReader = []
             grams.forEach((gram, gram_i) => {
@@ -757,7 +827,6 @@ function read_kino(kino: string) {
         let newsetulist: Map<string, HandleState>[] = []
         let dont_count_setu = false
 
-        //reader_map を並び替え
         reader_map.forEach(([katate, zi_reader], n_zi)=>{ //inscope 1zi target
             let newsetu: Map<string, HandleState> = new Map()
             if (dont_count_setu) return
@@ -834,6 +903,7 @@ function read_kino(kino: string) {
 
                 // console.log("tar_str=", tar_str, "valid true. slot_reader:", slot_reader)
                 // console.log("tar_str=", tar_str, "valid true. slot_reader_ord:", slot_reader_ord)
+                slot_reader.sort((d,f)=> d[0]-f[0])
                 for (const [gramid, _gramvalue] of slot_reader) {
                     const gramvalue = has_skipped ? 0 : _gramvalue
                     const [su_type_m, su_type_s]: [SuTypeM, SuTypeS] = susutypem.get("grams") ?? [

@@ -160,7 +160,19 @@ type SlotReaderFilled = {
 type ReaderMap = Map<Code, SlotReader>
 type ReaderMapFilled = Map<Code, SlotReaderFilled>
 type KatateReaderMap = [Katate, ReaderMap]
-
+const easytype_codeorder = [4,5,3,1,8,0,2,7,6,9]
+function easyTypeOrdering(code_group: Map<number, number[]>){
+    const map = new Map<number, number[]>()
+    easytype_codeorder.forEach((easycode, i)=>{
+        for (const [key, codes] of code_group.entries()){
+            if (codes.some(code=> code%shift_num ===easycode)) {
+                map.set(map.size, codes)
+                code_group.delete(key)
+            }
+        }
+    })
+    return map
+}
 function grouping() {
     let i = 0
     while (i < 20) {
@@ -675,7 +687,12 @@ function process(slot: Slot
                 for (const [gramid, [katate, code_group]] of code_groups){
                     const other_group: Map<GroupId, Code[]> = new Map()
                     for (const [groupid, codes] of code_group){
-                        codes.forEach((code, code_i)=>{
+                        const codes_ord = codes.sort((d,f)=> {
+                            let dscore = easytype_codeorder.findIndex(c=> c===d%shift_num)
+                            let fscore = easytype_codeorder.findIndex(c=> c===f%shift_num)
+                            return dscore-fscore
+                        })
+                        codes_ord.forEach((code, code_i)=>{
                             const other_codes = other_group.get(code_i)
                             if (other_codes ===undefined){
                                 other_group.set(code_i, [code])
@@ -693,7 +710,9 @@ function process(slot: Slot
             const code_reader: ReaderMap = new Map()
             for (const [gramid, [katate, code_group]] of code_groups) {
                 let n_shu = 0
-                for (const [groupid, codes] of code_group) {
+                const easy_ord_code_group = easyTypeOrdering(code_group)
+                console.log("gramid=",gramid, "easy_ord_code_group=", easy_ord_code_group)
+                for (const [groupid, codes] of easy_ord_code_group) {
                     for (const code of codes) {
                         const code_dic = code_reader.get(code)
                         if (code_dic === undefined) {

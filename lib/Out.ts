@@ -153,10 +153,10 @@ type Delemeter = {
 export const Delemeter: Delemeter = {
     word: "  ,  ",
     grammar: ".",
-    keitaiso_grammars: "-",
+    keitaiso_grammars: " - ",
     keitaiso: "/",
-    zi: '.',
-    zi_grammar: ">"
+    zi: ' ',
+    zi_grammar: " "
     , whitespace: " "
     , listitem: ", "
 }

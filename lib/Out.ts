@@ -1,4 +1,5 @@
 import {gloss, StrTsx} from "./Pattern"
+import { Language, selectGlosser } from "./phone"
 
 export const keyinfo_list: KeyInfo[] = [
     {
@@ -818,7 +819,7 @@ type GlossTag = typeof glosstag[keyof typeof glosstag]
 type GlossTagClass = number
 export type Glosstsx = [Gloss, GlossTag, GlossTagClass]
 
-function readgyo(gyo: string, gyosu: number) {
+function readgyo(gyo: string, gyosu: number, language: Language): StrTsx {
     const fn_r: StrTsx = ["", []]
     const delemeter = Delemeter.word
     const words = gyo.match(/\S+/g)
@@ -836,7 +837,7 @@ function readgyo(gyo: string, gyosu: number) {
                 if (is_affixes(word)) {
                     pre_hinsi = "affixes"
                 } else {
-                    const [rstr, rlist] = gloss(word)
+                    const [rstr, rlist] = selectGlosser (language)(word)  //gloss(word)
                     // const r = read_kino(word)
                     if (rstr) {
                         wordres_list.push(`${rstr} :kino`)
@@ -889,6 +890,47 @@ function readgyo(gyo: string, gyosu: number) {
         return [gyo, []] as StrTsx
     }
 }
+function intersperse<T> (x: T, list: T[] ) : T[] {
+    let l = list.flatMap(e => [x, e] )
+    l.pop()
+    return l
+}
+const parseSynth = (word: string, lang: Language): Glosstsx[] => {
+    if ( word.match(/^\S+$/) ) {
+        const [rword ,glosseds] = selectGlosser(lang)(word)
+        if (rword) {
+            return [
+                ...glosseds
+                , [" :", "delem", 0]
+                , ["synth", "attr", 1]
+            ]
+        } else {
+            console.log("invalid synthesis")
+            return []
+        }
+    } else {
+        console.log("invalid string as a word")
+        return []
+    }
+}
+
+export const markupParsedSynthLine = (text: string, lang: Language): Glosstsx[] => {
+    let ma = text.match(/\S+/g)
+    let l = (()=> {
+        if (ma) {
+            return ma.flatMap(word => [
+                ...parseSynth(word, lang),
+                [Delemeter.word, "delem", 0] as Glosstsx
+            ] )
+        } else return []})();
+    l.pop()
+    return l
+
+}
+export const markupParsedSynthWords = (text: string, lang: Language): Glosstsx[][] => {
+    let ma = text.match(/\S+/g)
+    return ma ? ma.map(word => parseSynth(word, lang)) : []
+}
 
 // function strtsx_converter([str, glosstsx]: StrTsx) {
 //     const tenkai = glosstsx.map(([gloss, glosstag, tagclass])=>
@@ -896,7 +938,7 @@ function readgyo(gyo: string, gyosu: number) {
 //     )
 // }
 
-export function parse(moji: string) {
+export function parse(moji: string, language: Language) {
     let gyos = moji.split("\n")
     let words = (moji.match(/\S+/g) || []).length
     let lines = gyos.length == 0 ? (words != 0 ? 1 : 0) : gyos.length
@@ -906,7 +948,7 @@ export function parse(moji: string) {
 
     // const [rstr, xlist] = gyos.map((gyo, i) => readgyo(gyo, i))
     return {
-        res: gyos.map((gyo, i) => readgyo(gyo, i)),
+        res: gyos.map((gyo, i) => readgyo(gyo, i, language)),
         info: {
             mojisu: char_num,
             linebreak: lines,

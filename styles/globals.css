@@ -38,7 +38,7 @@ a {
 
 
 /*color format*/
-.gyo {
+.gyo, .markup {
     --value: rgb(39, 159, 9);
     --attr: rgb(38, 67, 130);
     --spell: brown;

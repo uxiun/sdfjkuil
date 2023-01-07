@@ -78,7 +78,7 @@ const Setting: React.FC = () => {
       <select id="select_language" onChange={select} >
         <option value="">文法選択</option>
         {
-        AllLanguage.map((lang, i) => <option value={lang} selected={lang === currentLang} >{lang}</option> )
+        AllLanguage.map((lang, i) => <option key={`${lang}${i}`} value={lang} selected={lang === currentLang} >{lang}</option> )
       } </select>
     </div>
   )
@@ -115,14 +115,14 @@ const OutLinebreak: React.FC<OutLineProps> = ({text, lang}: OutLineProps) => {
   //const words = text.split("\s")
   const glosstsxLists: Glosstsx[][] = markupParsedSynthWords(text, lang)
   return <div className="synth-line gyo">{
-    glosstsxLists.map( list => {
+    glosstsxLists.map( (list, i) => {
       const spans = list.map( ([gloss, glosstag, tagclass], j) => {
         const cl = `${glosstag} ${glosstag}${tagclass}`
         let key = `${gloss}${j}`
         if (glosstag === 'value') key += `${Math.random()}`
         return <span className={cl} key={key}>{gloss}</span>
       })
-      return <div className="word">{spans}</div>
+      return <div className="word" key={`word${i}`}>{spans}</div>
     })
   } </div>
 }
@@ -142,12 +142,12 @@ const LineParser: React.FC<LineParserProps> = ({lang}: LineParserProps) => {
     <div id="line-parser">
       {lang}
       <InLine setstate={setstate} />
-      {outSwitcher(option)(text, lang)}
+      {outSwitcher(option)({text, lang})}
     </div>
   )
 }
 
-const outSwitcher = (option: ParsersOption) => (text: string, lang: Language) => {
+const outSwitcher = (option: ParsersOption) => function Outswitch({text, lang}: {text: string, lang: Language}) {
   console.log("outSwitcher <- ", option)
   return option.linebreak? <OutLinebreak text={text} lang={lang} /> : <OutLine text={text} lang={lang} />
 }
@@ -177,7 +177,7 @@ const ParsersSetting: React.FC<States<ParsersOption>> = ({current, setter}: Stat
     <form onChange={e => formOnChange (e) (getValues())} >
     { Object.entries(current).map( kv => {
       const k = kv[0] as keyof ParsersOption
-      return <label>{k} <input type={orDefault("checkbox", typemap.get(k) )} {...register(k)} /></label>
+      return <label key={k} >{k} <input type={orDefault("checkbox", typemap.get(k) )} {...register(k)} /></label>
     })
     }
     </form>
@@ -190,7 +190,7 @@ const Parsers: React.FC = () => {
     <div id="parsers">
       <h2>合成部分のみ</h2>
       <ParsersSetting current={opt} setter={setOpt} />
-      {AllLanguage.map(l => <LineParser lang={l} setting={opt} /> ) }
+      {AllLanguage.map(l => <LineParser lang={l} setting={opt} key={l+"lineparser"} /> ) }
     </div>
   )
 }
